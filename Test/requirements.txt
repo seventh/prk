@@ -1,0 +1,15 @@
+RMS-REQ o-a
+a e i o u
+-- RMS-REQ
+
+aa
+bb
+
+RMS-REQ xxx
+toto toto
+at
+tatat
+-- RMS-REQ
+
+RMS-REQ
+-- RMS-REQ
