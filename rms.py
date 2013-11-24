@@ -42,6 +42,8 @@ one view to another, and thus edit efficiently a requirements'document.
 """
 
 import collections
+import hashlib
+import io
 import logging
 import re
 import sys
@@ -50,9 +52,9 @@ import sys
 # Configurable input/output features
 REQUIREMENT_TAG = "RMS-REQ"
 IDENTIFIER_REGEX = "^[0-9A-Za-z-]+$"
-FORMAT = "SPEC-REQ-{:0>3d}"
+FORMAT_HEADER = "SPEC-REQ-"
 INPUT_COMMAND = "\\rmsinput{"
-
+N = 3
 
 # Intermediate 'command' type
 Command = collections.namedtuple("Command", ["function", "input_file"])
@@ -94,15 +96,21 @@ def split(input_file):
             if line.startswith(REQUIREMENT_TAG):
 
                 req_id = _isolate_id(line, line_num)
-                if req_id is None:
-                    req_id = _reserve_id(used_ids)
-
-                output.write("\\rmsinput{{{}}}\n".format(req_id))
-                output = open(req_id + ".tex", "wt")
+                output = io.StringIO()
 
             elif line.startswith("-- " + REQUIREMENT_TAG):
-                output.close()
+                output.seek(0)
+                content = output.read()
+
+                if req_id is None:
+                    req_id = _reserve_id_hash(used_ids, content)
+
+                output_file = open(req_id + ".tex", "wt")
+                output_file.write(content)
+                output_file.close()
+
                 output = sys.stdout
+                output.write("\\rmsinput{{{}}}\n".format(req_id))
 
             else:
                 output.write(line)
@@ -142,16 +150,43 @@ def _isolate_id(line, line_num):
     return result
 
 
-def _reserve_id(used_ids):
-    result = None
-    for n in range(1000):
-        result = FORMAT.format(n)
-        if result not in used_ids:
-            used_ids.add(result)
-            break
+def _reserve_id_cont(used_ids, content):
+    max_n = -1
+    for used_id in used_ids:
+        if used_id.startswith(FORMAT_HEADER):
+            n = used_id[len(FORMAT_HEADER):]
+            if n.isdigit():
+                n = int(n)
+                max_n = max(n, max_n)
+
+    max_n += 1
+    result = FORMAT_HEADER + ("{:0>" + str(N) + "d}").format(max_n)
+    used_ids.add(result)
+
+    return result
+
+
+def _reserve_id_hash(used_ids, content):
+    hashing = hashlib.md5()
+    hashing.update(content.encode("utf-8"))
+    footprint = str(int(hashing.hexdigest(), 16))[::-1]
+
+    # First try: only the first N characters
+    result = FORMAT_HEADER + footprint[:N]
+    if result not in used_ids:
+        used_ids.add(result)
+
+    # Second try: extract as short prefix as necessary
     else:
-        logging.error("Cannot generate a new unique identifier")
-        result = None
+        footprint = footprint.strip("0")
+        for n in range(N, len(footprint)):
+            result = FORMAT_HEADER + footprint[:n]
+            if result not in used_ids:
+                used_ids.add(result)
+                break
+        else:
+            logging.error("Cannot generate a new unique identifier")
+            result = None
 
     return result
 
