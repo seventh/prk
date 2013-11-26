@@ -37,7 +37,8 @@
 
 When editing a document, it is best seen as a whole, in a single file. But,
 when stored, in order to verify its evolution, it is best seen split, a
-requirement per file. RMS provides the minimum functionnalities to go from
+requirement per file. Finally, when published, additional formatting is
+required on edition form. RMS provides the minimum functionnalities to go from
 one view to another, and thus edit efficiently a requirements'document.
 """
 
@@ -51,10 +52,18 @@ import sys
 
 # Configurable input/output features
 REQUIREMENT_TAG = "RMS-REQ"
+REQUIREMENT_INC = "RMS-INC"
+
 IDENTIFIER_REGEX = "^[0-9A-Za-z-]+$"
 FORMAT_HEADER = "SPEC-REQ-"
-INPUT_COMMAND = "\\rmsinput{"
 N = 3
+
+PUBLISH_FORMAT = """**[{req_id}]**
+
+{req_content}
+
+**-- End of requirement**
+"""
 
 # Intermediate 'command' type
 Command = collections.namedtuple("Command", ["function", "input_file"])
@@ -67,16 +76,16 @@ Command = collections.namedtuple("Command", ["function", "input_file"])
 def merge(input_file):
     with open(input_file, "rt") as text:
         for line in text:
-            if not line.startswith(INPUT_COMMAND):
+            if not line.startswith(REQUIREMENT_INC):
                 sys.stdout.write(line)
             else:
-                req_id = line[len(INPUT_COMMAND):-2]
+                req_id = line[len(REQUIREMENT_INC) + 1:-1]
 
-                print("{} {}".format(REQUIREMENT_TAG, req_id))
-                with open(req_id + ".tex", "rt") as req:
+                sys.stdout.write("{} {}\n".format(REQUIREMENT_TAG, req_id))
+                with open(req_id + ".rms", "rt") as req:
                     for line_req in req:
                         sys.stdout.write(line_req)
-                print("-- {}".format(REQUIREMENT_TAG))
+                sys.stdout.write("-- {}\n".format(REQUIREMENT_TAG))
 
 
 ##############################################################################
@@ -105,12 +114,12 @@ def split(input_file):
                 if req_id is None:
                     req_id = _reserve_id_hash(used_ids, content)
 
-                output_file = open(req_id + ".tex", "wt")
+                output_file = open(req_id + ".rms", "wt")
                 output_file.write(content)
                 output_file.close()
 
                 output = sys.stdout
-                output.write("\\rmsinput{{{}}}\n".format(req_id))
+                output.write("{} {}\n".format(REQUIREMENT_INC, req_id))
 
             else:
                 output.write(line)
@@ -176,10 +185,10 @@ def _reserve_id_hash(used_ids, content):
     if result not in used_ids:
         used_ids.add(result)
 
-    # Second try: extract as short prefix as necessary
+    # Second try: extract as short prefix as possible
     else:
         footprint = footprint.strip("0")
-        for n in range(N, len(footprint)):
+        for n in range(N, len(footprint) + 1):
             result = FORMAT_HEADER + footprint[:n]
             if result not in used_ids:
                 used_ids.add(result)
@@ -205,7 +214,34 @@ search for each '{req}' mark and output it in a different file
 
 $> {cmd} merge FILE > FILE.out
 search for each '{inp}' mark and merge it with normal output
-""".format(cmd = input_file, req = REQUIREMENT_TAG, inp = INPUT_COMMAND))
+
+$> {cmd} yield FILE > FILE.out
+search for each '{inp}' mark, merge and format it with normal output
+""".format(cmd = input_file, req = REQUIREMENT_TAG, inp = REQUIREMENT_INC))
+
+
+##############################################################################
+# 'yield' command implementation
+##############################################################################
+
+def yield_cmd(input_file):
+    with open(input_file, "rt") as text:
+        for line in text:
+            if not line.startswith(REQUIREMENT_INC):
+                sys.stdout.write(line)
+            else:
+                req_id = line[len(REQUIREMENT_INC) + 1:-1]
+
+                content = io.StringIO()
+                with open(req_id + ".rms", "rt") as req:
+                    for line_req in req:
+                        content.write(line_req)
+
+                content.seek(0)
+                req_content = content.read().strip("\n")
+                sys.stdout.write(PUBLISH_FORMAT.format(
+                        req_id = req_id,
+                        req_content = req_content))
 
 
 # Other functions
@@ -218,6 +254,8 @@ def parse(args):
             result = Command(merge, args[1])
         elif args[0] == "split":
             result = Command(split, args[1])
+        elif args[0] == "yield":
+            result = Command(yield_cmd, args[1])
 
     return result
 
