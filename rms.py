@@ -53,6 +53,7 @@ import sys
 # Configurable input/output features
 REQUIREMENT_TAG = "RMS-REQ"
 REQUIREMENT_INC = "RMS-INC"
+REQUIREMENT_MEM = "RMS-MEM"
 
 IDENTIFIER_REGEX = "^[0-9A-Za-z-]+$"
 FORMAT_HEADER = "SPEC-REQ-"
@@ -74,12 +75,13 @@ Command = collections.namedtuple("Command", ["function", "input_file"])
 ##############################################################################
 
 def merge(input_file):
+    used_ids = set()
+
     with open(input_file, "rt") as text:
         for line in text:
-            if not line.startswith(REQUIREMENT_INC):
-                sys.stdout.write(line)
-            else:
+            if line.startswith(REQUIREMENT_INC):
                 req_id = line[len(REQUIREMENT_INC) + 1:-1]
+                used_ids.add(req_id)
 
                 sys.stdout.write("{} {}\n".format(REQUIREMENT_TAG, req_id))
                 with open(req_id + ".rms", "rt") as req:
@@ -87,12 +89,26 @@ def merge(input_file):
                         sys.stdout.write(line_req)
                 sys.stdout.write("-- {}\n".format(REQUIREMENT_TAG))
 
+            elif line.startswith(REQUIREMENT_MEM):
+                req_id = line[len(REQUIREMENT_MEM) + 1:-1]
+                used_ids.add(req_id)
+
+            else:
+                sys.stdout.write(line)
+
+        # Keep track of all requirements ids, in case some of them disappear
+        # during editing
+        for req_id in sorted(used_ids):
+            sys.stdout.write("{} {}\n".format(REQUIREMENT_MEM, req_id))
+
 
 ##############################################################################
 # 'split' command implementation
 ##############################################################################
 
 def split(input_file):
+    cited_ids = set()
+
     # Parse file in order to collect already used requirement identifiers
     used_ids = _collect_ids(input_file)
 
@@ -103,7 +119,6 @@ def split(input_file):
         line_num = 1
         for line in text:
             if line.startswith(REQUIREMENT_TAG):
-
                 req_id = _isolate_id(line, line_num)
                 output = io.StringIO()
 
@@ -113,6 +128,7 @@ def split(input_file):
 
                 if req_id is None:
                     req_id = _reserve_id_hash(used_ids, content)
+                cited_ids.add(req_id)
 
                 output_file = open(req_id + ".rms", "wt")
                 output_file.write(content)
@@ -121,10 +137,14 @@ def split(input_file):
                 output = sys.stdout
                 output.write("{} {}\n".format(REQUIREMENT_INC, req_id))
 
-            else:
+            elif not line.startswith(REQUIREMENT_MEM):
                 output.write(line)
 
             line_num += 1
+
+        # Keep memory only of unused requirement identifiers
+        for req_id in sorted(used_ids.difference(cited_ids)):
+            output.write("{} {}\n".format(REQUIREMENT_MEM, req_id))
 
 
 def _collect_ids(input_file):
@@ -134,7 +154,11 @@ def _collect_ids(input_file):
     with open(input_file, "rt") as text:
         for line in text:
             line_num += 1
-            if line.startswith(REQUIREMENT_TAG):
+            if line.startswith(REQUIREMENT_MEM):
+                req_id = line[len(REQUIREMENT_MEM) + 1:-1]
+                result.add(req_id)
+
+            elif line.startswith(REQUIREMENT_TAG):
                 req_id = _isolate_id(line, line_num)
                 if req_id in result:
                     logging.error(
@@ -227,9 +251,7 @@ search for each '{inp}' mark, merge and format it with normal output
 def yield_cmd(input_file):
     with open(input_file, "rt") as text:
         for line in text:
-            if not line.startswith(REQUIREMENT_INC):
-                sys.stdout.write(line)
-            else:
+            if line.startswith(REQUIREMENT_INC):
                 req_id = line[len(REQUIREMENT_INC) + 1:-1]
 
                 content = io.StringIO()
@@ -242,6 +264,10 @@ def yield_cmd(input_file):
                 sys.stdout.write(PUBLISH_FORMAT.format(
                         req_id = req_id,
                         req_content = req_content))
+
+            # Technical informations shall be removed from final document
+            elif not line.startswith(REQUIREMENT_MEM):
+                sys.stdout.write(line)
 
 
 # Other functions
