@@ -54,6 +54,10 @@ import sys
 REQUIREMENT_TAG = "RMS-REQ"
 REQUIREMENT_INC = "RMS-INC"
 REQUIREMENT_MEM = "RMS-MEM"
+REQUIREMENT_REF = "RMS-REF"
+REQUIREMENT_LNK = "RMS-LNK"
+REQUIREMENT_MTR = "RMS-MTR"
+REQUIREMENT_RTM = "RMS-RTM"
 
 IDENTIFIER_REGEX = "^[0-9A-Za-z-]+$"
 FORMAT_HEADER = "SPEC-REQ-"
@@ -75,7 +79,11 @@ Command = collections.namedtuple("Command", ["function", "input_file"])
 ##############################################################################
 
 def merge(input_file):
+    # Currently used and obsolete requirement identifiers
     used_ids = set()
+
+    # Load traceability matrix, if any
+    linked_ids = _read_traceability(input_file)
 
     with open(input_file, "rt") as text:
         for line in text:
@@ -84,6 +92,12 @@ def merge(input_file):
                 used_ids.add(req_id)
 
                 sys.stdout.write("{} {}\n".format(REQUIREMENT_TAG, req_id))
+
+                if req_id in linked_ids:
+                    for other_id in sorted(linked_ids[req_id]):
+                        sys.stdout.write("{} {}\n".format(REQUIREMENT_REF,
+                                                          other_id))
+
                 with open(req_id + ".rms", "rt") as req:
                     for line_req in req:
                         sys.stdout.write(line_req)
@@ -102,14 +116,31 @@ def merge(input_file):
             sys.stdout.write("{} {}\n".format(REQUIREMENT_MEM, req_id))
 
 
+def _read_traceability(input_file):
+    result = collections.defaultdict(set)
+
+    with open(input_file, "rt") as text:
+        for line in text:
+            if line.startswith(REQUIREMENT_LNK):
+                fields = line.split()
+                result[fields[1]].add(fields[2])
+
+    return result
+
+
 ##############################################################################
 # 'split' command implementation
 ##############################################################################
 
 def split(input_file):
+    # Referenced identifiers by traceability
+    linked_ids = dict()
+
+    # Requirement identifiers actually used in current version of the document
     cited_ids = set()
 
-    # Parse file in order to collect already used requirement identifiers
+    # Parse file in order to collect already used requirement identifiers,
+    # even obsolete ones
     used_ids = _collect_ids(input_file)
 
     # Actually split the file
@@ -120,6 +151,7 @@ def split(input_file):
         for line in text:
             if line.startswith(REQUIREMENT_TAG):
                 req_id = _isolate_id(line, line_num)
+                references = set()
                 output = io.StringIO()
 
             elif line.startswith("-- " + REQUIREMENT_TAG):
@@ -129,6 +161,7 @@ def split(input_file):
                 if req_id is None:
                     req_id = _reserve_id_hash(used_ids, content)
                 cited_ids.add(req_id)
+                linked_ids[req_id] = references
 
                 output_file = open(req_id + ".rms", "wt")
                 output_file.write(content)
@@ -136,6 +169,10 @@ def split(input_file):
 
                 output = sys.stdout
                 output.write("{} {}\n".format(REQUIREMENT_INC, req_id))
+
+            elif line.startswith(REQUIREMENT_REF):
+                other_id = line[len(REQUIREMENT_REF) + 1:-1]
+                references.add(other_id)
 
             elif not line.startswith(REQUIREMENT_MEM):
                 output.write(line)
@@ -145,6 +182,12 @@ def split(input_file):
         # Keep memory only of unused requirement identifiers
         for req_id in sorted(used_ids.difference(cited_ids)):
             output.write("{} {}\n".format(REQUIREMENT_MEM, req_id))
+
+        # Keep memory of linked requirement identifiers
+        for req_id in sorted(linked_ids):
+            for other_id in sorted(linked_ids[req_id]):
+                output.write("{} {} {}\n".format(REQUIREMENT_LNK, req_id,
+                                                 other_id))
 
 
 def _collect_ids(input_file):
@@ -249,6 +292,9 @@ search for each '{inp}' mark, merge and format it with normal output
 ##############################################################################
 
 def yield_cmd(input_file):
+    # Load traceability matrix, if any
+    linked_ids = _read_traceability(input_file)
+
     with open(input_file, "rt") as text:
         for line in text:
             if line.startswith(REQUIREMENT_INC):
@@ -265,9 +311,77 @@ def yield_cmd(input_file):
                         req_id = req_id,
                         req_content = req_content))
 
+            # Traceability matrices
+            elif line.startswith(REQUIREMENT_MTR):
+                _output_traceability_matrix(linked_ids,
+                                            "Requirement",
+                                            "Reference")
+
+            elif line.startswith(REQUIREMENT_RTM):
+                _output_traceability_matrix(_transpose_matrix(linked_ids),
+                                            "Reference",
+                                            "Requirement")
+
             # Technical informations shall be removed from final document
-            elif not line.startswith(REQUIREMENT_MEM):
+            elif line.startswith(REQUIREMENT_MEM):
+                pass
+
+            elif line.startswith(REQUIREMENT_LNK):
+                pass
+
+            # Normal output
+            else:
                 sys.stdout.write(line)
+
+
+def _output_traceability_matrix(matrix, header_key, header_value):
+    # Determine formatting parameters
+    key_length = len(header_key)
+    value_length = len(header_value)
+
+    for key in matrix:
+        if len(key) > key_length:
+            key_length = len(key)
+        for value in matrix[key]:
+            if len(value) > value_length:
+                value_length = len(value)
+
+    horizontal_line = "+" + ("-" * (key_length + 2)) \
+        + "+" + ("-" * (value_length + 2)) + "+" + "\n"
+    formatting = ("| {{key: <{klen}}} " \
+                      + "| {{value: <{vlen}}} " \
+                      + "|\n").format(klen = key_length,
+                                      vlen = value_length)
+
+    # Header
+    output = sys.stdout
+
+    output.write(horizontal_line)
+    output.write(formatting.format(key = header_key, value = header_value))
+    output.write(horizontal_line)
+
+    for req_id in sorted(matrix):
+        values = sorted(matrix[req_id])
+
+        if len(values) == 1:
+            output.write(formatting.format(key = req_id, value = values[0]))
+            output.write(horizontal_line)
+
+        elif len(values) > 1:
+            output.write(formatting.format(key = req_id, value = values[0]))
+            for i in range(1, len(values)):
+                output.write(formatting.format(key = "", value = values[i]))
+            output.write(horizontal_line)
+
+
+def _transpose_matrix(matrix):
+    result = collections.defaultdict(set)
+
+    for key in matrix:
+        for value in matrix[key]:
+            result[value].add(key)
+
+    return result
 
 
 # Other functions
