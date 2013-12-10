@@ -60,7 +60,7 @@ REQUIREMENT_MTR = "RMS-MTR"
 REQUIREMENT_RTM = "RMS-RTM"
 
 IDENTIFIER_REGEX = "^[0-9A-Za-z-]+$"
-FORMAT_HEADER = "SPEC-REQ-"
+FORMAT_HEADER = "SRS-REQ-"
 N = 3
 
 PUBLISH_FORMAT = """**[{req_id}]**
@@ -106,6 +106,9 @@ def merge(input_file):
             elif line.startswith(REQUIREMENT_MEM):
                 req_id = line[len(REQUIREMENT_MEM) + 1:-1]
                 used_ids.add(req_id)
+
+            elif line.startswith(REQUIREMENT_LNK):
+                pass
 
             else:
                 sys.stdout.write(line)
