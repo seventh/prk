@@ -5,7 +5,7 @@
 # guillaume.lemaitre@gmail.com
 #
 # This software is a computer program whose purpose is to help management
-# of requirements'documentation with any SCM.
+# of software requirements with any SCM.
 #
 # This software is governed by the CeCILL license under French law and
 # abiding by the rules of distribution of free software.  You can  use,
@@ -33,13 +33,14 @@
 # The fact that you are presently reading this means that you have had
 # knowledge of the CeCILL license and that you accept its terms.
 
-"""Requirement Management with any SCM
+"""(PeRKy) Software requirements management with any SCM
 
 When editing a document, it is best seen as a whole, in a single file. But,
 when stored, in order to verify its evolution, it is best seen split, a
 requirement per file. Finally, when published, additional formatting is
-required on edition form. RMS provides the minimum functionnalities to go from
-one view to another, and thus edit efficiently a requirements'document.
+required on edition form. PeRKy provides developers with the minimum
+functionalities to go from one view to another, and thus edit efficiently a
+requirements documentation.
 """
 
 import collections
@@ -51,16 +52,16 @@ import sys
 
 
 # Configurable input/output features
-REQUIREMENT_TAG = "RMS-REQ"
-REQUIREMENT_INC = "RMS-INC"
-REQUIREMENT_MEM = "RMS-MEM"
-REQUIREMENT_REF = "RMS-REF"
-REQUIREMENT_LNK = "RMS-LNK"
-REQUIREMENT_MTR = "RMS-MTR"
-REQUIREMENT_RTM = "RMS-RTM"
+REQUIREMENT_TAG = "PRK-REQ"
+REQUIREMENT_INC = "PRK-INC"
+REQUIREMENT_MEM = "PRK-MEM"
+REQUIREMENT_REF = "PRK-REF"
+REQUIREMENT_LNK = "PRK-LNK"
+REQUIREMENT_MTX = "PRK-MTX"
+REQUIREMENT_XTM = "PRK-XTM"
 
 IDENTIFIER_REGEX = "^[0-9A-Za-z-]+$"
-FORMAT_HEADER = "SRS-REQ-"
+FORMAT_HEADER = "REQ-"
 N = 3
 
 PUBLISH_FORMAT = """**[{req_id}]**
@@ -100,7 +101,7 @@ def merge(input_file):
                         sys.stdout.write("{} {}\n".format(REQUIREMENT_REF,
                                                           other_id))
 
-                with open(req_id + ".rms", "rt") as req:
+                with open(req_id + ".prk", "rt") as req:
                     for line_req in req:
                         sys.stdout.write(line_req)
                 sys.stdout.write("-- {}\n".format(REQUIREMENT_TAG))
@@ -168,7 +169,7 @@ def split(input_file):
                 cited_ids.add(req_id)
                 linked_ids[req_id] = references
 
-                output_file = open(req_id + ".rms", "wt")
+                output_file = open(req_id + ".prk", "wt")
                 output_file.write(content)
                 output_file.close()
 
@@ -306,7 +307,7 @@ def yield_cmd(input_file):
                 req_id = line[len(REQUIREMENT_INC) + 1:-1]
 
                 content = io.StringIO()
-                with open(req_id + ".rms", "rt") as req:
+                with open(req_id + ".prk", "rt") as req:
                     for line_req in req:
                         content.write(line_req)
 
@@ -399,7 +400,7 @@ def _transpose_matrix(matrix):
 # Other functions
 
 def parse(args):
-    result = Command(usage, "rms")
+    result = Command(usage, "prk")
 
     if len(args) == 2:
         if args[0] == "merge":
@@ -413,7 +414,7 @@ def parse(args):
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(level=logging.WARNING)
 
     COMMAND = parse(sys.argv[1:])
     COMMAND.function(COMMAND.input_file)
