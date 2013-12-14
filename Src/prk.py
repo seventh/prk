@@ -36,11 +36,10 @@
 """(PeRKy) Software requirements management with any SCM
 
 When editing a document, it is best seen as a whole, in a single file. But,
-when stored, in order to verify its evolution, it is best seen split, a
-requirement per file. Finally, when published, additional formatting is
-required on edition form. PeRKy provides developers with the minimum
-functionalities to go from one view to another, and thus edit efficiently a
-requirements documentation.
+in order to verify its evolution, it is best stored split, a requirement per
+file. Finally, additional formatting or treatments may be required on final
+output. PeRKy provides developers with the minimum functionalities to go from
+one view to another, and thus edit efficiently a requirements documentation.
 """
 
 import collections
@@ -50,16 +49,17 @@ import logging
 import re
 import sys
 
+# Tags associated to PeRKy delimiters
+TAG_BRB = "PRK-REQ"
+TAG_DTM = "PRK-MTX"
+TAG_ERB = "-- PRK-REQ"
+TAG_IPR = "PRK-INC"
+TAG_LNK = "PRK-LNK"
+TAG_RRI = "PRK-MEM"
+TAG_RTM = "PRK-XTM"
+TAG_TRB = "PRK-REF"
 
 # Configurable input/output features
-REQUIREMENT_TAG = "PRK-REQ"
-REQUIREMENT_INC = "PRK-INC"
-REQUIREMENT_MEM = "PRK-MEM"
-REQUIREMENT_REF = "PRK-REF"
-REQUIREMENT_LNK = "PRK-LNK"
-REQUIREMENT_MTX = "PRK-MTX"
-REQUIREMENT_XTM = "PRK-XTM"
-
 IDENTIFIER_REGEX = "^[0-9A-Za-z-]+$"
 FORMAT_HEADER = "REQ-"
 N = 3
@@ -82,6 +82,13 @@ Command = collections.namedtuple("Command", ["function", "input_file"])
 ##############################################################################
 
 def merge(input_file):
+    """Merge command:
+
+    - replace all IPR delimiter with corresponding requirement block
+    - add a RRI delimiter for each IPR one
+    - replace all LNK delimiter with a TRB delimiter in corresponding
+      requirement block
+    """
     # Currently used and obsolete requirement identifiers
     used_ids = set()
 
@@ -90,27 +97,27 @@ def merge(input_file):
 
     with open(input_file, "rt") as text:
         for line in text:
-            if line.startswith(REQUIREMENT_INC):
-                req_id = line[len(REQUIREMENT_INC) + 1:-1]
+            if line.startswith(TAG_IPR):
+                req_id = line[len(TAG_IPR) + 1:-1]
                 used_ids.add(req_id)
 
-                sys.stdout.write("{} {}\n".format(REQUIREMENT_TAG, req_id))
+                sys.stdout.write("{} {}\n".format(TAG_BRB, req_id))
 
                 if req_id in linked_ids:
                     for other_id in sorted(linked_ids[req_id]):
-                        sys.stdout.write("{} {}\n".format(REQUIREMENT_REF,
+                        sys.stdout.write("{} {}\n".format(TAG_TRB,
                                                           other_id))
 
                 with open(req_id + ".prk", "rt") as req:
                     for line_req in req:
                         sys.stdout.write(line_req)
-                sys.stdout.write("-- {}\n".format(REQUIREMENT_TAG))
+                sys.stdout.write("{}\n".format(TAG_ERB))
 
-            elif line.startswith(REQUIREMENT_MEM):
-                req_id = line[len(REQUIREMENT_MEM) + 1:-1]
+            elif line.startswith(TAG_RRI):
+                req_id = line[len(TAG_RRI) + 1:-1]
                 used_ids.add(req_id)
 
-            elif line.startswith(REQUIREMENT_LNK):
+            elif line.startswith(TAG_LNK):
                 pass
 
             else:
@@ -119,7 +126,7 @@ def merge(input_file):
         # Keep track of all requirements ids, in case some of them disappear
         # during editing
         for req_id in sorted(used_ids):
-            sys.stdout.write("{} {}\n".format(REQUIREMENT_MEM, req_id))
+            sys.stdout.write("{} {}\n".format(TAG_RRI, req_id))
 
 
 def _read_traceability(input_file):
@@ -127,7 +134,7 @@ def _read_traceability(input_file):
 
     with open(input_file, "rt") as text:
         for line in text:
-            if line.startswith(REQUIREMENT_LNK):
+            if line.startswith(TAG_LNK):
                 fields = line.split()
                 result[fields[1]].add(fields[2])
 
@@ -139,6 +146,13 @@ def _read_traceability(input_file):
 ##############################################################################
 
 def split(input_file):
+    """Split command:
+
+    - replace each BRB/ERB delimiter pair with corresponding IRB delimiter
+    - replace all TRB delimiter with corresponding LNK one
+    - remove all superfluous RRI delimiter
+    """
+
     # Referenced identifiers by traceability
     linked_ids = dict()
 
@@ -151,16 +165,18 @@ def split(input_file):
 
     # Actually split the file
     output = sys.stdout
+    in_requirement_block = False
 
     with open(input_file, "rt") as text:
         line_num = 1
         for line in text:
-            if line.startswith(REQUIREMENT_TAG):
+            if line.startswith(TAG_BRB):
+                in_requirement_block = True
                 req_id = _isolate_id(line, line_num)
                 references = set()
                 output = io.StringIO()
 
-            elif line.startswith("-- " + REQUIREMENT_TAG):
+            elif line.startswith(TAG_ERB):
                 output.seek(0)
                 content = output.read()
 
@@ -174,25 +190,32 @@ def split(input_file):
                 output_file.close()
 
                 output = sys.stdout
-                output.write("{} {}\n".format(REQUIREMENT_INC, req_id))
+                output.write("{} {}\n".format(TAG_IPR, req_id))
 
-            elif line.startswith(REQUIREMENT_REF):
-                other_id = line[len(REQUIREMENT_REF) + 1:-1]
-                references.add(other_id)
+                in_requirement_block = False
 
-            elif not line.startswith(REQUIREMENT_MEM):
+            elif line.startswith(TAG_TRB):
+                if not in_requirement_block:
+                    logging.warning(
+                        "line {}: TRB tag outside of any requirement block"
+                        .format(line_num))
+                else:
+                    other_id = line[len(TAG_TRB) + 1:-1]
+                    references.add(other_id)
+
+            elif not line.startswith(TAG_RRI):
                 output.write(line)
 
             line_num += 1
 
         # Keep memory only of unused requirement identifiers
         for req_id in sorted(used_ids.difference(cited_ids)):
-            output.write("{} {}\n".format(REQUIREMENT_MEM, req_id))
+            output.write("{} {}\n".format(TAG_RRI, req_id))
 
         # Keep memory of linked requirement identifiers
         for req_id in sorted(linked_ids):
             for other_id in sorted(linked_ids[req_id]):
-                output.write("{} {} {}\n".format(REQUIREMENT_LNK, req_id,
+                output.write("{} {} {}\n".format(TAG_LNK, req_id,
                                                  other_id))
 
 
@@ -203,11 +226,11 @@ def _collect_ids(input_file):
     with open(input_file, "rt") as text:
         for line in text:
             line_num += 1
-            if line.startswith(REQUIREMENT_MEM):
-                req_id = line[len(REQUIREMENT_MEM) + 1:-1]
+            if line.startswith(TAG_RRI):
+                req_id = line[len(TAG_RRI) + 1:-1]
                 result.add(req_id)
 
-            elif line.startswith(REQUIREMENT_TAG):
+            elif line.startswith(TAG_BRB):
                 req_id = _isolate_id(line, line_num)
                 if req_id in result:
                     logging.error(
@@ -220,7 +243,7 @@ def _collect_ids(input_file):
 
 
 def _isolate_id(line, line_num):
-    result = line[len(REQUIREMENT_TAG):].strip()
+    result = line[len(TAG_BRB):].strip()
 
     if len(result) == 0:
         result = None
@@ -290,7 +313,7 @@ search for each '{inp}' mark and merge it with normal output
 
 $> {cmd} yield FILE > FILE.out
 search for each '{inp}' mark, merge and format it with normal output
-""".format(cmd = input_file, req = REQUIREMENT_TAG, inp = REQUIREMENT_INC))
+""".format(cmd = input_file, req = TAG_BRB, inp = TAG_IPR))
 
 
 ##############################################################################
@@ -303,8 +326,8 @@ def yield_cmd(input_file):
 
     with open(input_file, "rt") as text:
         for line in text:
-            if line.startswith(REQUIREMENT_INC):
-                req_id = line[len(REQUIREMENT_INC) + 1:-1]
+            if line.startswith(TAG_IPR):
+                req_id = line[len(TAG_IPR) + 1:-1]
 
                 content = io.StringIO()
                 with open(req_id + ".prk", "rt") as req:
@@ -321,21 +344,21 @@ def yield_cmd(input_file):
                     linked_ids[req_id] = set()
 
             # Traceability matrices
-            elif line.startswith(REQUIREMENT_MTR):
+            elif line.startswith(TAG_DTM):
                 _output_traceability_matrix(linked_ids,
                                             "Requirement",
                                             "Reference")
 
-            elif line.startswith(REQUIREMENT_RTM):
+            elif line.startswith(TAG_RTM):
                 _output_traceability_matrix(_transpose_matrix(linked_ids),
                                             "Reference",
                                             "Requirement")
 
             # Technical informations shall be removed from final document
-            elif line.startswith(REQUIREMENT_MEM):
+            elif line.startswith(TAG_RRI):
                 pass
 
-            elif line.startswith(REQUIREMENT_LNK):
+            elif line.startswith(TAG_LNK):
                 pass
 
             # Normal output

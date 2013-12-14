@@ -1,4 +1,4 @@
-- Renommer RMS en PRK (Python, ReST and K...nowledge?)
+- Permettre l'utilisation de sys.stdin comme entrée
 
 - Refondre le script avec un analyseur unique plutôt que trois
 
@@ -8,8 +8,6 @@
   de */etc/bash_completion.d* devraient aider)
 
 - Écrire les spécifications en ReST / yEd avec ... PRK
-
-  - Rappeler les outils de conversion ReST --> ... (docutils, pandoc)
 
 - Écrire le README pour GitHub
 
