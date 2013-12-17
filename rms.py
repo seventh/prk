@@ -70,6 +70,8 @@ PUBLISH_FORMAT = """**[{req_id}]**
 **-- End of requirement**
 """
 
+SPARSE_MATRIX = True
+
 # Intermediate 'command' type
 Command = collections.namedtuple("Command", ["function", "input_file"])
 
@@ -314,6 +316,9 @@ def yield_cmd(input_file):
                         req_id = req_id,
                         req_content = req_content))
 
+                if SPARSE_MATRIX and req_id not in linked_ids:
+                    linked_ids[req_id] = set()
+
             # Traceability matrices
             elif line.startswith(REQUIREMENT_MTR):
                 _output_traceability_matrix(linked_ids,
@@ -366,11 +371,15 @@ def _output_traceability_matrix(matrix, header_key, header_value):
     for req_id in sorted(matrix):
         values = sorted(matrix[req_id])
 
-        if len(values) == 1:
+        if len(values) == 0:
+            output.write(formatting.format(key = req_id, value = ""))
+            output.write(horizontal_line)
+
+        elif len(values) == 1:
             output.write(formatting.format(key = req_id, value = values[0]))
             output.write(horizontal_line)
 
-        elif len(values) > 1:
+        else: # if len(values) > 1:
             output.write(formatting.format(key = req_id, value = values[0]))
             for i in range(1, len(values)):
                 output.write(formatting.format(key = "", value = values[i]))
