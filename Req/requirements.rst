@@ -391,4 +391,6 @@ PeRKy accepts the following set of command-line options:
 
 --permissive  support optional input transformations
 --strict      any warning provokes script failure
+
+--compact  direct traceability matrix references only tracked requirements
 -- PRK-REQ
