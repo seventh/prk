@@ -393,4 +393,5 @@ PeRKy accepts the following set of command-line options:
 --strict      any warning provokes script failure
 
 --compact  direct traceability matrix references only tracked requirements
+--sparse   direct traceability matrix references all requirements (default)
 -- PRK-REQ
