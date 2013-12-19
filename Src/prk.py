@@ -43,6 +43,7 @@ one view to another, and thus edit efficiently a requirements documentation.
 """
 
 import collections
+import getopt
 import hashlib
 import io
 import logging
@@ -436,8 +437,73 @@ def parse(args):
     return result
 
 
+def parse_command_line(command_line, configuration):
+    error_found = False
+    opts, args = getopt.getopt(command_line, "i:o:", ["sparse", "compact", "input=", "output="])
+
+    # Parse arguments before options
+    if not (1 <= len(args) <= 2):
+        logging.error("Wrong number of arguments")
+    else:
+        if args[0] == "merge":
+            configuration["command"] = merge
+        elif args[0] == "split":
+            configuration["command"] = split
+        elif args[0] == "yield":
+            configuration["command"] = yield_cmd
+
+        if len(args) >= 2:
+            try:
+                configuration["input"] = open(args[1], "rt")
+            except FileNotFoundError:
+                logging.error("File " + args[1] + " does not exist")
+                error_found = True
+
+    # Parse options
+    if not error_found:
+        for opt, val in opts:
+            if opt == "--sparse":
+                configuration["sparse"] = True
+            elif opt == "--compact":
+                configuration["sparse"] = False
+
+            elif opt in ["-i", "--input"]:
+                try:
+                    configuration["input"] = open(val, "rt")
+                except FileNotFoundError:
+                    logging.error("File " + args[1] + " does not exist")
+                    error_found = True
+
+            elif opt in ["-o", "--output"]:
+                try:
+                    configuration["output"] = open(val, "wt")
+                except IOError:
+                    logging.error("Cannot open file " + val + " for writing")
+                    error_found = True
+
+            else:
+                logging.error("Unknown option " + opt)
+                error_found = True
+
+    if error_found:
+        configuration["command"] = usage
+
+
+
 if __name__ == "__main__":
     logging.basicConfig(level=logging.WARNING)
 
+    # Parse Command line arguments
+    CONFIGURATION = {
+        "command" : usage,
+        "input" : sys.stdin,
+        "output" : sys.stdout,
+
+        "sparse" : False,
+        }
+    parse_command_line(sys.argv[1:], CONFIGURATION)
+    print(CONFIGURATION)
+
+    #
     COMMAND = parse(sys.argv[1:])
     COMMAND.function(COMMAND.input_file)
