@@ -4,8 +4,8 @@ Introduction
 PeRKy_ is a computer software dedicated to management of software requirements
 with a `Source Control Manager`_ (abbreviated *SCM*) as storage layer.
 
-.. _PeRKy: http://www.github.com/seventh/PeRKy
-.. _`Source Control Manager`: http://en.wikipedia.org/SCM
+.. _PeRKy: http://www.github.com/seventh/prk
+.. _`Source Control Manager`: http://en.wikipedia.org/Source_Control_Management
 
 PeRKy helps users to keep documentation in sync with their developments by
 using the same tools than the one they use for code. It also integrates
@@ -28,7 +28,7 @@ PRK-REQ
 PeRKy is aimed at produce document redacted with reStructuredText_ markup
 language.
 
-.. _reStructuredText: http://www.docutils.org
+.. _reStructuredText: http://docutils.sourceforge.net/docs/ref/rst/restructuredtext.html
 -- PRK-REQ
 
 *Note:* This is really important only for output format. Management of
@@ -56,14 +56,14 @@ common format, including:
   templates, and offer conversion to other markup languages (markdown,
   mediawiki) or usual document formats like doc or rtf.
 
-.. _reST: _reStructuredText
-.. _docutils: _reStructuredText
-.. _pandoc: http://www.pandoc.org
+.. _reST: reStructuredText_
+.. _docutils: reStructuredText_
+.. _pandoc: http://johnmacfarlane.net/pandoc/
 
 rmtoo_ is a tool similar to PeRKy, although oriented towards internal
 traceability and agile developments.
 
-.. _rmtoo: http://www.toto.de/rmtoo
+.. _rmtoo: http://www.flonatel.de/projekte/rmtoo/
 
 Requirements
 ============
@@ -336,6 +336,13 @@ RRI_ delimiters which reference the same tag than any IPR_ or TRB_ one are
 removed from the output.
 -- PRK-REQ
 
+Merge transformation
+''''''''''''''''''''
+
+PRK-REQ
+``merge`` command may optionally remove each included file from storage.
+-- PRK-REQ
+
 Summary
 '''''''
 
@@ -377,8 +384,131 @@ depends on implementation.
 
 .. [#] Otherwise requirement identifiers are very likely to be lost
 
+Configuration
+-------------
+
+PRK-REQ
+PeRKy shall accept a ``QUIET`` option to limitate the output on standard error
+channel to error messages
+-- PRK-REQ
+
+PRK-REQ
+PeRKy shall accept a ``VERBOSE`` option to enlarge the scope of messages
+produced on standard error channel to informational ones.
+-- PRK-REQ
+
+PRK-REQ
+PeRKy shall accept a ``SPARSE`` option for ``yield`` command to produce direct
+traceability matrix which keyset is composed of all the requirements of the
+document.
+-- PRK-REQ
+
+PRK-REQ
+PeRKy shall accept a ``COMPACT`` option for ``yield`` command to produce
+direct traceability matrix which keyset is composed of only tracked
+requirements.
+-- PRK-REQ
+
+PRK-REQ
+PeRKy shall accept a ``PERMISSIVE`` option to support optional input
+transformations.
+-- PRK-REQ
+
+PRK-REQ
+PeRKy shall accept a ``STRICT`` option to ensure that any warning message on
+standard error channel provokes script failure.
+-- PRK-REQ
+
+PRK-REQ
+PeRKy shall accept an ``INPUT`` option to describe its main input.
+-- PRK-REQ
+
+PRK-REQ
+PeRKy shall accept an ``OUTPUT`` option to describe its main output.
+-- PRK-REQ
+
+PRK-REQ
+PeRKy shall accept a ``CLEAN`` option for ``merge`` command to remove all
+files corresponding to IPR_ delimiters.
+-- PRK-REQ
+
+PRK-REQ
+PeRKy allows user to specify all of the configuration options as command-line
+options.
+-- PRK-REQ
+
+PRK-REQ
+PeRKy allows user to specify some of the configuration options in a static
+configuration file.
+-- PRK-REQ
+
+PRK-REQ
+PeRKy shall define a default configuration for the option set it supports.
+-- PRK-REQ
+
+PRK-REQ
+PeRKy considers only the options given the following way, in decreasing order
+of preference:
+
+1) Command-line options
+
+2) Static configuration
+
+3) Default configuration
+-- PRK-REQ
+
 Command-line options
---------------------
+''''''''''''''''''''
+
+PRK-REQ
+Use of the ``--quiet`` command-line option corresponds to setting the
+``QUIET`` option.
+-- PRK-REQ
+
+PRK-REQ
+Use of the ``--verbose`` command-line option corresponds to setting the
+``VERBOSE`` option.
+-- PRK-REQ
+
+PRK-REQ
+Use of the ``--compact`` command-line option corresponds to setting the
+``COMPACT`` option.
+-- PRK-REQ
+
+PRK-REQ
+Use of the ``--sparse`` command-line option corresponds to setting the
+``SPARSE`` option.
+-- PRK-REQ
+
+PRK-REQ
+Use of the ``--permissive`` command-line option corresponds to setting the
+``PERMISSIVE`` option.
+-- PRK-REQ
+
+PRK-REQ
+Use of the ``--strict`` command-line option corresponds to setting the
+``STRICT`` option.
+-- PRK-REQ
+
+PRK-REQ
+Use of the ``--input`` command-line option corresponds to setting the
+``INPUT`` option value.
+-- PRK-REQ
+
+PRK-REQ
+Use of the ``-i`` command-line option corresponds to setting the
+``INPUT`` option value.
+-- PRK-REQ
+
+PRK-REQ
+Use of the ``--output`` command-line option corresponds to setting the
+``OUTPUT`` option value.
+-- PRK-REQ
+
+PRK-REQ
+Use of the ``-o`` command-line option corresponds to setting the
+``OUTPUT`` option value.
+-- PRK-REQ
 
 PRK-REQ
 PeRKy accepts the following set of command-line options:
@@ -394,4 +524,74 @@ PeRKy accepts the following set of command-line options:
 
 --compact  direct traceability matrix references only tracked requirements
 --sparse   direct traceability matrix references all requirements (default)
+-- PRK-REQ
+
+Static configuration
+''''''''''''''''''''
+
+PRK-REQ
+PeRKy searches for static configuration files in the following directories,
+in decreasing order of preference:
+
+1) Current directory
+
+2) User's home directory
+
+3) Systemwide directory
+-- PRK-REQ
+
+PRK-REQ
+PeRKy does not support setting the ``INPUT`` option value in static
+configuration file.
+-- PRK-REQ
+
+PRK-REQ
+PeRKy does not support setting the ``OUTPUT`` option value in static
+configuration file.
+-- PRK-REQ
+
+PRK-REQ
+Any unexpected option in static configuration file shall produce a warning
+message.
+-- PRK-REQ
+
+PRK-REQ
+All warning messages concerning static configuration file shall be produced
+before program failure.
+-- PRK-REQ
+
+Default configuration
+'''''''''''''''''''''
+
+PRK-REQ
+By default, PeRKy considers that the ``SPARSE`` option is set, thus the
+``COMPACT`` one is not.
+-- PRK-REQ
+
+PRK-REQ
+By default, PeRKy considers that the ``QUIET`` option is not set.
+-- PRK-REQ
+
+PRK-REQ
+By default, PeRKy considers that the ``VERBOSE`` option is not set.
+-- PRK-REQ
+
+PRK-REQ
+By default, PeRKy considers that the ``STRICT`` option is set, thus the
+``PERMISSIVE`` one is not.
+-- PRK-REQ
+
+PRK-REQ
+By default, PeRKy considers that the ``INPUT`` option value is the standard
+input.
+-- PRK-REQ
+
+PRK-REQ
+By default, PeRKy considers that the ``OUTPUT`` option value is the standard
+output.
+-- PRK-REQ
+
+PRK-REQ
+PeRKy shall be able to output default configuration as a static configuration
+file.
 -- PRK-REQ

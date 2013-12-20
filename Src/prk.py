@@ -43,10 +43,11 @@ one view to another, and thus edit efficiently a requirements documentation.
 """
 
 import collections
-import getopt
+import configparser
 import hashlib
 import io
 import logging
+import os
 import re
 import sys
 
@@ -437,72 +438,59 @@ def parse(args):
     return result
 
 
-def parse_command_line(command_line, configuration):
-    error_found = False
-    opts, args = getopt.getopt(command_line, "i:o:", ["sparse", "compact", "input=", "output="])
+def load_configuration():
+    result = dict()
+    config_file = configparser.ConfigParser()
 
-    # Parse arguments before options
-    if not (1 <= len(args) <= 2):
-        logging.error("Wrong number of arguments")
+    # First, find adequate configuration file:
+    for location in iterate_configuration_file_locations():
+        if os.path.exists(location):
+            config_file.read(location)
+            logging.info("Loaded configuration file: '{}'".format(location))
+            break
     else:
-        if args[0] == "merge":
-            configuration["command"] = merge
-        elif args[0] == "split":
-            configuration["command"] = split
-        elif args[0] == "yield":
-            configuration["command"] = yield_cmd
+        logging.info("No configuration file is available.")
 
-        if len(args) >= 2:
-            try:
-                configuration["input"] = open(args[1], "rt")
-            except FileNotFoundError:
-                logging.error("File " + args[1] + " does not exist")
-                error_found = True
+    # Then, read it
+    for section in config_file:
+        if section == "merge":
+            pass
+        elif section == "yield":
+            for option in config_file.options(section):
+                if option == "sparse":
+                    pass
+                else:
+                    logging.warning("Unknown option '{}' in '{}' section of configuration file".format(option, section))
+            pass
+        elif section == "split":
+            pass
 
-    # Parse options
-    if not error_found:
-        for opt, val in opts:
-            if opt == "--sparse":
-                configuration["sparse"] = True
-            elif opt == "--compact":
-                configuration["sparse"] = False
+        # Section created by configparser: should be empty
+        elif section == "DEFAULT":
+            if len(config_file.defaults()) != 0:
+                logging.warning("No default option is authorized in configuration file.")
 
-            elif opt in ["-i", "--input"]:
-                try:
-                    configuration["input"] = open(val, "rt")
-                except FileNotFoundError:
-                    logging.error("File " + args[1] + " does not exist")
-                    error_found = True
+        # Other sections created by user himself
+        else:
+            logging.warning("Unknown section '{}' in configuration file.".format(section))
 
-            elif opt in ["-o", "--output"]:
-                try:
-                    configuration["output"] = open(val, "wt")
-                except IOError:
-                    logging.error("Cannot open file " + val + " for writing")
-                    error_found = True
 
-            else:
-                logging.error("Unknown option " + opt)
-                error_found = True
+def iterate_configuration_file_locations():
+    # Current directory
+    yield ".prkrc"
 
-    if error_found:
-        configuration["command"] = usage
+    # User's home directory
+    yield os.path.join(os.environ["HOME"], ".prkrc")
+
+    # Systemwide configuration directory
+    yield "/etc/prkrc"
 
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.WARNING)
+    logging.basicConfig(level=logging.INFO)
 
-    # Parse Command line arguments
-    CONFIGURATION = {
-        "command" : usage,
-        "input" : sys.stdin,
-        "output" : sys.stdout,
-
-        "sparse" : False,
-        }
-    parse_command_line(sys.argv[1:], CONFIGURATION)
-    print(CONFIGURATION)
+    # load_configuration()
 
     #
     COMMAND = parse(sys.argv[1:])
