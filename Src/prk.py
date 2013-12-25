@@ -44,6 +44,7 @@ one view to another, and thus edit efficiently a requirements documentation.
 
 import collections
 import configparser
+import getopt
 import hashlib
 import io
 import logging
@@ -73,17 +74,11 @@ PUBLISH_FORMAT = """**[{req_id}]**
 **-- End of requirement**
 """
 
-SPARSE_MATRIX = True
-
-# Intermediate 'command' type
-Command = collections.namedtuple("Command", ["function", "input_file"])
-
-
 ##############################################################################
 # 'merge' command implementation
 ##############################################################################
 
-def merge(input_file):
+def merge(configuration):
     """Merge command:
 
     - replace all IPR delimiter with corresponding requirement block
@@ -94,51 +89,52 @@ def merge(input_file):
     # Currently used and obsolete requirement identifiers
     used_ids = set()
 
+    # Load main input and replace it with a list of lines
+    configuration["input"] = _load_file(configuration["input"])
+
     # Load traceability matrix, if any
-    linked_ids = _read_traceability(input_file)
+    linked_ids = _read_traceability(configuration)
 
-    with open(input_file, "rt") as text:
-        for line in text:
-            if line.startswith(TAG_IPR):
-                req_id = line[len(TAG_IPR) + 1:-1]
-                used_ids.add(req_id)
+    for line in configuration["input"]:
+        if line.startswith(TAG_IPR):
+            req_id = line[len(TAG_IPR) + 1:-1]
+            used_ids.add(req_id)
 
-                sys.stdout.write("{} {}\n".format(TAG_BRB, req_id))
+            configuration["output"].write("{} {}\n".format(TAG_BRB, req_id))
 
-                if req_id in linked_ids:
-                    for other_id in sorted(linked_ids[req_id]):
-                        sys.stdout.write("{} {}\n".format(TAG_TRB,
-                                                          other_id))
+            if req_id in linked_ids:
+                for other_id in sorted(linked_ids[req_id]):
+                    configuration["output"].write("{} {}\n".format(TAG_TRB,
+                                                                   other_id))
 
-                with open(req_id + ".prk", "rt") as req:
-                    for line_req in req:
-                        sys.stdout.write(line_req)
-                sys.stdout.write("{}\n".format(TAG_ERB))
+            with open(req_id + ".prk", "rt") as req:
+                for line_req in req:
+                    configuration["output"].write(line_req)
+            configuration["output"].write("{}\n".format(TAG_ERB))
 
-            elif line.startswith(TAG_RRI):
-                req_id = line[len(TAG_RRI) + 1:-1]
-                used_ids.add(req_id)
+        elif line.startswith(TAG_RRI):
+            req_id = line[len(TAG_RRI) + 1:-1]
+            used_ids.add(req_id)
 
-            elif line.startswith(TAG_LNK):
-                pass
+        elif line.startswith(TAG_LNK):
+            pass
 
-            else:
-                sys.stdout.write(line)
+        else:
+            configuration["output"].write(line)
 
-        # Keep track of all requirements ids, in case some of them disappear
-        # during editing
-        for req_id in sorted(used_ids):
-            sys.stdout.write("{} {}\n".format(TAG_RRI, req_id))
+    # Keep track of all requirements ids, in case some of them disappear
+    # during editing
+    for req_id in sorted(used_ids):
+        configuration["output"].write("{} {}\n".format(TAG_RRI, req_id))
 
 
-def _read_traceability(input_file):
+def _read_traceability(configuration):
     result = collections.defaultdict(set)
 
-    with open(input_file, "rt") as text:
-        for line in text:
-            if line.startswith(TAG_LNK):
-                fields = line.split()
-                result[fields[1]].add(fields[2])
+    for line in configuration["input"]:
+        if line.startswith(TAG_LNK):
+            fields = line.split()
+            result[fields[1]].add(fields[2])
 
     return result
 
@@ -147,7 +143,7 @@ def _read_traceability(input_file):
 # 'split' command implementation
 ##############################################################################
 
-def split(input_file):
+def split(configuration):
     """Split command:
 
     - replace each BRB/ERB delimiter pair with corresponding IRB delimiter
@@ -161,85 +157,86 @@ def split(input_file):
     # Requirement identifiers actually used in current version of the document
     cited_ids = set()
 
+    # Load main input and replace it with a list of lines
+    configuration["input"] = _load_file(configuration["input"])
+
     # Parse file in order to collect already used requirement identifiers,
     # even obsolete ones
-    used_ids = _collect_ids(input_file)
+    used_ids = _collect_ids(configuration)
 
     # Actually split the file
-    output = sys.stdout
+    output = configuration["output"]
     in_requirement_block = False
 
-    with open(input_file, "rt") as text:
-        line_num = 1
-        for line in text:
-            if line.startswith(TAG_BRB):
-                in_requirement_block = True
-                req_id = _isolate_id(line, line_num)
-                references = set()
-                output = io.StringIO()
+    line_num = 0
+    for line in configuration["input"]:
+        line_num += 1
 
-            elif line.startswith(TAG_ERB):
-                output.seek(0)
-                content = output.read()
+        if line.startswith(TAG_BRB):
+            in_requirement_block = True
+            req_id = _isolate_id(line, line_num)
+            references = set()
+            output = io.StringIO()
 
-                if req_id is None:
-                    req_id = _reserve_id_hash(used_ids, content)
-                cited_ids.add(req_id)
-                linked_ids[req_id] = references
+        elif line.startswith(TAG_ERB):
+            output.seek(0)
+            content = output.read()
 
-                output_file = open(req_id + ".prk", "wt")
-                output_file.write(content)
-                output_file.close()
+            if req_id is None:
+                req_id = _reserve_id_hash(used_ids, content)
+            cited_ids.add(req_id)
+            linked_ids[req_id] = references
 
-                output = sys.stdout
-                output.write("{} {}\n".format(TAG_IPR, req_id))
+            output_file = open(req_id + ".prk", "wt")
+            output_file.write(content)
+            output_file.close()
 
-                in_requirement_block = False
+            output = configuration["output"]
+            output.write("{} {}\n".format(TAG_IPR, req_id))
 
-            elif line.startswith(TAG_TRB):
-                if not in_requirement_block:
-                    logging.warning(
-                        "line {}: TRB tag outside of any requirement block"
-                        .format(line_num))
-                else:
-                    other_id = line[len(TAG_TRB) + 1:-1]
-                    references.add(other_id)
+            in_requirement_block = False
 
-            elif not line.startswith(TAG_RRI):
-                output.write(line)
+        elif line.startswith(TAG_TRB):
+            if not in_requirement_block:
+                logging.warning(
+                    "line {}: TRB tag outside of any requirement block"
+                    .format(line_num))
+            else:
+                other_id = line[len(TAG_TRB) + 1:-1]
+                references.add(other_id)
 
-            line_num += 1
+        elif not line.startswith(TAG_RRI):
+            output.write(line)
 
-        # Keep memory only of unused requirement identifiers
-        for req_id in sorted(used_ids.difference(cited_ids)):
-            output.write("{} {}\n".format(TAG_RRI, req_id))
+    # Keep memory only of unused requirement identifiers
+    for req_id in sorted(used_ids.difference(cited_ids)):
+        output.write("{} {}\n".format(TAG_RRI, req_id))
 
-        # Keep memory of linked requirement identifiers
-        for req_id in sorted(linked_ids):
-            for other_id in sorted(linked_ids[req_id]):
-                output.write("{} {} {}\n".format(TAG_LNK, req_id,
-                                                 other_id))
+    # Keep memory of linked requirement identifiers
+    for req_id in sorted(linked_ids):
+        for other_id in sorted(linked_ids[req_id]):
+            output.write("{} {} {}\n".format(TAG_LNK, req_id,
+                                             other_id))
 
 
-def _collect_ids(input_file):
+def _collect_ids(configuration):
     result = set()
 
     line_num = 0
-    with open(input_file, "rt") as text:
-        for line in text:
-            line_num += 1
-            if line.startswith(TAG_RRI):
-                req_id = line[len(TAG_RRI) + 1:-1]
-                result.add(req_id)
+    for line in configuration["input"]:
+        line_num += 1
+        if line.startswith(TAG_RRI):
+            req_id = line[len(TAG_RRI) + 1:-1]
+            result.add(req_id)
 
-            elif line.startswith(TAG_BRB):
-                req_id = _isolate_id(line, line_num)
-                if req_id in result:
-                    logging.error(
-                        "line {}: '{}' identifier is not unique".format(
-                            line_num, result))
-                elif req_id is not None:
-                    result.add(req_id)
+        elif line.startswith(TAG_BRB):
+            req_id = _isolate_id(line, line_num)
+            if req_id in result:
+                logging.error(
+                    "line {}: '{}' identifier is not unique".format(
+                        line_num, result))
+            elif req_id is not None:
+                result.add(req_id)
 
     return result
 
@@ -302,7 +299,7 @@ def _reserve_id_hash(used_ids, content):
 # 'usage' command implementation
 ##############################################################################
 
-def usage(input_file):
+def usage(configuration):
     print("""
 Usage: {cmd} [split|merge] FILE
        transform input FILE on standard output
@@ -315,60 +312,65 @@ search for each '{inp}' mark and merge it with normal output
 
 $> {cmd} yield FILE > FILE.out
 search for each '{inp}' mark, merge and format it with normal output
-""".format(cmd = input_file, req = TAG_BRB, inp = TAG_IPR))
+""".format(cmd = "prk", req = TAG_BRB, inp = TAG_IPR))
 
 
 ##############################################################################
 # 'yield' command implementation
 ##############################################################################
 
-def yield_cmd(input_file):
+def yield_cmd(configuration):
+    # Load main input and replace it with a list of lines
+    configuration["input"] = _load_file(configuration["input"])
+
     # Load traceability matrix, if any
-    linked_ids = _read_traceability(input_file)
+    linked_ids = _read_traceability(configuration)
 
-    with open(input_file, "rt") as text:
-        for line in text:
-            if line.startswith(TAG_IPR):
-                req_id = line[len(TAG_IPR) + 1:-1]
+    for line in configuration["input"]:
+        if line.startswith(TAG_IPR):
+            req_id = line[len(TAG_IPR) + 1:-1]
 
-                content = io.StringIO()
-                with open(req_id + ".prk", "rt") as req:
-                    for line_req in req:
-                        content.write(line_req)
+            content = io.StringIO()
+            with open(req_id + ".prk", "rt") as req:
+                for line_req in req:
+                    content.write(line_req)
 
-                content.seek(0)
-                req_content = content.read().strip("\n")
-                sys.stdout.write(PUBLISH_FORMAT.format(
-                        req_id = req_id,
-                        req_content = req_content))
+            content.seek(0)
+            req_content = content.read().strip("\n")
+            configuration["output"].write(PUBLISH_FORMAT.format(
+                req_id = req_id,
+                req_content = req_content))
 
-                if SPARSE_MATRIX and req_id not in linked_ids:
-                    linked_ids[req_id] = set()
+            if configuration["sparse"] and req_id not in linked_ids:
+                linked_ids[req_id] = set()
 
-            # Traceability matrices
-            elif line.startswith(TAG_DTM):
-                _output_traceability_matrix(linked_ids,
-                                            "Requirement",
-                                            "Reference")
+        # Traceability matrices
+        elif line.startswith(TAG_DTM):
+            _output_traceability_matrix(linked_ids,
+                                        "Requirement",
+                                        "Reference",
+                                        configuration)
 
-            elif line.startswith(TAG_RTM):
-                _output_traceability_matrix(_transpose_matrix(linked_ids),
-                                            "Reference",
-                                            "Requirement")
+        elif line.startswith(TAG_RTM):
+            _output_traceability_matrix(_transpose_matrix(linked_ids),
+                                        "Reference",
+                                        "Requirement",
+                                        configuration)
 
-            # Technical informations shall be removed from final document
-            elif line.startswith(TAG_RRI):
-                pass
+        # Technical informations shall be removed from final document
+        elif line.startswith(TAG_RRI):
+            pass
 
-            elif line.startswith(TAG_LNK):
-                pass
+        elif line.startswith(TAG_LNK):
+            pass
 
-            # Normal output
-            else:
-                sys.stdout.write(line)
+        # Normal output
+        else:
+            configuration["output"].write(line)
 
 
-def _output_traceability_matrix(matrix, header_key, header_value):
+def _output_traceability_matrix(matrix, header_key, header_value,
+                                configuration):
     # Determine formatting parameters
     key_length = len(header_key)
     value_length = len(header_value)
@@ -388,7 +390,7 @@ def _output_traceability_matrix(matrix, header_key, header_value):
                                       vlen = value_length)
 
     # Header
-    output = sys.stdout
+    output = configuration["output"]
 
     output.write(horizontal_line)
     output.write(formatting.format(key = header_key, value = header_value))
@@ -424,16 +426,61 @@ def _transpose_matrix(matrix):
 
 # Other functions
 
-def parse(args):
-    result = Command(usage, "prk")
+def parse(command_line, configuration):
+    """Unstable command-line options parser. Furthermore, this version is not
+    satisfactory as the following command is rejected:
 
-    if len(args) == 2:
+    >>> ./prk.py merge -i input.prk
+
+    to the benefit of this one:
+
+    >>> ./prk.py -i input.prk merge
+    """
+    opts, args = getopt.getopt(command_line, "i:o:", ["sparse", "compact", "input=", "output=", "quiet", "verbose"])
+
+    # Parse arguments before options
+    if not (1 <= len(args) <= 2):
+        logging.error("Wrong number of arguments")
+    else:
         if args[0] == "merge":
-            result = Command(merge, args[1])
+            configuration["command"] = merge
         elif args[0] == "split":
-            result = Command(split, args[1])
+            configuration["command"] = split
         elif args[0] == "yield":
-            result = Command(yield_cmd, args[1])
+            configuration["command"] = yield_cmd
+        else:
+            configuration["command"] = usage
+
+        if len(args) >= 2:
+            configuration["input"] = open(args[1], "rt")
+
+    # Parse options
+    for opt, val in opts:
+        if opt == "--sparse":
+            configuration["sparse"] = True
+        elif opt == "--compact":
+            configuration["sparse"] = False
+
+        elif opt in ["-i", "--input"]:
+            configuration["input"] = open(val, "rt")
+
+        elif opt in ["-o", "--output"]:
+            configuration["output"] = open(val, "wt")
+
+        elif opt == "--quiet":
+            configuration["log_level"] = 0
+
+        elif opt == "--verbose":
+            configuration["log_level"] = 2
+
+
+def _load_file(input_file):
+    result = None
+
+    if type(input_file) == type(str):
+        input_file = open(input_file, "rt")
+
+    result = list(input_file)
 
     return result
 
@@ -490,8 +537,17 @@ def iterate_configuration_file_locations():
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
 
+    CONFIGURATION = {
+        "command": usage,
+        "input": sys.stdin,
+        "log_level": 1,
+        "output": sys.stdout,
+        "sparse": False,
+    }
+
+    parse(sys.argv[1:], CONFIGURATION)
+
     # load_configuration()
 
-    #
-    COMMAND = parse(sys.argv[1:])
-    COMMAND.function(COMMAND.input_file)
+    # Execute requested transformation
+    CONFIGURATION["command"](CONFIGURATION)
