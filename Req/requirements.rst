@@ -295,7 +295,7 @@ The tag_ associated with IPR_ delimiter is "``PRK-INC``".
 
 PRK-REQ
 A mandatory `requirement identifier` shall be added right after the IPR_ tag.
--- PRK_REQ
+-- PRK-REQ
 
 Document transformations
 ------------------------
