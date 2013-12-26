@@ -467,7 +467,7 @@ def parse(tokens, configuration):
     if not error_encountered:
         if len(args) == 1:
             try:
-                configuration["input"] = open(args[1], "rt")
+                configuration["input"] = open(args[0], "rt")
             except OSError as e:
                 logging.error(e)
                 error_encountered = True
