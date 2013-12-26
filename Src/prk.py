@@ -168,33 +168,41 @@ def split(configuration):
     output = configuration["output"]
     in_requirement_block = False
 
+    def output_requirement():
+        nonlocal output, req_id, cited_ids, linked_ids, in_requirement_block
+
+        output.seek(0)
+        content = output.read()
+
+        if req_id is None:
+            req_id = _reserve_id_hash(used_ids, content)
+        cited_ids.add(req_id)
+        linked_ids[req_id] = references
+
+        output_file = open(req_id + ".prk", "wt")
+        output_file.write(content)
+        output_file.close()
+
+        output = configuration["output"]
+        output.write("{} {}\n".format(TAG_IPR, req_id))
+
+        in_requirement_block = False
+
     line_num = 0
     for line in configuration["input"]:
         line_num += 1
 
         if line.startswith(TAG_BRB):
+            if in_requirement_block:
+                output_requirement()
+
             in_requirement_block = True
             req_id = _isolate_id(line, line_num)
             references = set()
             output = io.StringIO()
 
         elif line.startswith(TAG_ERB):
-            output.seek(0)
-            content = output.read()
-
-            if req_id is None:
-                req_id = _reserve_id_hash(used_ids, content)
-            cited_ids.add(req_id)
-            linked_ids[req_id] = references
-
-            output_file = open(req_id + ".prk", "wt")
-            output_file.write(content)
-            output_file.close()
-
-            output = configuration["output"]
-            output.write("{} {}\n".format(TAG_IPR, req_id))
-
-            in_requirement_block = False
+            output_requirement()
 
         elif line.startswith(TAG_TRB):
             if not in_requirement_block:
@@ -207,6 +215,9 @@ def split(configuration):
 
         elif not line.startswith(TAG_RRI):
             output.write(line)
+
+    if in_requirement_block:
+        output_requirement()
 
     # Keep memory only of unused requirement identifiers
     for req_id in sorted(used_ids.difference(cited_ids)):
