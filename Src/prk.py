@@ -426,7 +426,7 @@ def _transpose_matrix(matrix):
 
 # Other functions
 
-def parse(command_line, configuration):
+def parse(tokens, configuration):
     """Unstable command-line options parser. Furthermore, this version is not
     satisfactory as the following command is rejected:
 
@@ -436,23 +436,44 @@ def parse(command_line, configuration):
 
     >>> ./prk.py -i input.prk merge
     """
-    opts, args = getopt.getopt(command_line, "i:o:", ["sparse", "compact", "input=", "output=", "quiet", "verbose"])
+    error_encountered = False
 
-    # Parse arguments before options
-    if not (1 <= len(args) <= 2):
+    # Parse command name
+    if len(tokens) < 1:
         logging.error("Wrong number of arguments")
+        error_encountered = True
+    elif tokens[0] == "merge":
+        configuration["command"] = merge
+    elif tokens[0] == "split":
+        configuration["command"] = split
+    elif tokens[0] == "yield":
+        configuration["command"] = yield_cmd
     else:
-        if args[0] == "merge":
-            configuration["command"] = merge
-        elif args[0] == "split":
-            configuration["command"] = split
-        elif args[0] == "yield":
-            configuration["command"] = yield_cmd
-        else:
-            configuration["command"] = usage
+        logging.error("Unknown command - first argument shall either be " \
+                      + "'merge', 'split' or 'yield'")
+        error_encountered = True
 
-        if len(args) >= 2:
-            configuration["input"] = open(args[1], "rt")
+    # Parse remaining tokens as options and arguments
+    opts = list()
+    args = list()
+    if not error_encountered:
+        try:
+            opts, args = getopt.getopt(tokens[1:], "i:o:", ["sparse", "compact", "input=", "output=", "quiet", "verbose"])
+        except getopt.GetoptError as e:
+            logging.error(e)
+            error_encountered = True
+
+    # Any argument is taken as input
+    if not error_encountered:
+        if len(args) == 1:
+            try:
+                configuration["input"] = open(args[1], "rt")
+            except OSError as e:
+                logging.error(e)
+                error_encountered = True
+        elif len(args) > 1:
+            logging.error("Wrong number of arguments")
+            error_encountered = True
 
     # Parse options
     for opt, val in opts:
@@ -462,16 +483,28 @@ def parse(command_line, configuration):
             configuration["sparse"] = False
 
         elif opt in ["-i", "--input"]:
-            configuration["input"] = open(val, "rt")
+            try:
+                configuration["input"] = open(val, "rt")
+            except OSError as e:
+                logging.error(e)
+                error_encountered = True
 
         elif opt in ["-o", "--output"]:
-            configuration["output"] = open(val, "wt")
+            try:
+                configuration["output"] = open(val, "wt")
+            except OSError as e:
+                logging.error(e)
+                error_encountered = True
 
         elif opt == "--quiet":
             configuration["log_level"] = 0
 
         elif opt == "--verbose":
             configuration["log_level"] = 2
+
+    #
+    if error_encountered:
+        configuration["command"] = usage
 
 
 def _load_file(input_file):
