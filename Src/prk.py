@@ -311,8 +311,7 @@ def _reserve_id_hash(used_ids, content):
 ##############################################################################
 
 def usage(configuration):
-    print("""
-Usage: {cmd} [split|merge] FILE
+    print("""Usage: {cmd} merge|split|yield [OPTIONS] [FILE]
        transform input FILE on standard output
 
 $> {cmd} split FILE > FILE.out
