@@ -6,7 +6,7 @@ with any `Source Control Manager`_ (abbreviated *SCM*) as storage layer, based
 on a simple principle: **1 file per requirement**.
 
 .. _PeRKy: http://www.github.com/seventh/prk
-.. _`Source Control Manager`: http://en.wikipedia.org/Source_Control_Management
+.. _`Source Control Manager`: http://en.wikipedia.org/wiki/Source_Control_Management
 
 PeRKy helps users to keep documentation in sync with their developments by
 using the same tools than the one they use for code. It also integrates
