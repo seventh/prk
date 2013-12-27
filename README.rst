@@ -1,11 +1,3 @@
-This software is a computer program whose purpose is to help management of
-software requirements with any SCM.
-
-This software is governed by the CeCILL license under French law and abiding
-by the rules of distribution of free software.
-
-------------------------------------------------------------------------------
-
 PeRKy_ is a computer software dedicated to management of software requirements
 with any `Source Control Manager`_ (abbreviated *SCM*) as storage layer, based
 on a simple principle: **1 file per requirement**.
@@ -17,6 +9,11 @@ PeRKy helps users to keep documentation in sync with their developments by
 using the same tools than the one they use for code. It also integrates
 notions of distributed development and thus highly limitates the risk of
 encountering conflicts when merging branches of development.
+
+------------------------------------------------------------------------------
+
+This software is governed by the CeCILL license under French law and abiding
+by the rules of distribution of free software.
 
 ------------------------------------------------------------------------------
 
