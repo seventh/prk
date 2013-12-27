@@ -2,7 +2,8 @@ Introduction
 ============
 
 PeRKy_ is a computer software dedicated to management of software requirements
-with a `Source Control Manager`_ (abbreviated *SCM*) as storage layer.
+with any `Source Control Manager`_ (abbreviated *SCM*) as storage layer, based
+on a simple principle: **1 file per requirement**.
 
 .. _PeRKy: http://www.github.com/seventh/prk
 .. _`Source Control Manager`: http://en.wikipedia.org/Source_Control_Management
@@ -10,10 +11,10 @@ with a `Source Control Manager`_ (abbreviated *SCM*) as storage layer.
 PeRKy helps users to keep documentation in sync with their developments by
 using the same tools than the one they use for code. It also integrates
 notions of distributed development and thus highly limitates the risk of
-encountering conflicts when merging branches of developments.
+encountering conflicts when merging branches of development.
 
-PeRKy relies on SCM principles and commands for users to follow the evolution
-of their software requirements, like *tag*, *diff* or *log*.
+PeRKy relies on common SCM principles and commands for users to follow the
+evolution of their software requirements, like *log*, *diff* or *tag*.
 
 Dependencies
 ------------
@@ -25,14 +26,14 @@ PeRKy is written in `Python 3.x`_.
 -- PRK-REQ
 
 PRK-REQ
-PeRKy is aimed at produce document redacted with reStructuredText_ markup
+PeRKy is aimed at producing document structured with reStructuredText_ markup
 language.
 
 .. _reStructuredText: http://docutils.sourceforge.net/docs/ref/rst/restructuredtext.html
 -- PRK-REQ
 
 *Note:* This is really important only for output format. Management of
-document does not rely on any reST intrisics.
+document does not rely on any reST intrisics until production.
 
 Licence
 -------
