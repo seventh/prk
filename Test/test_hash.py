@@ -32,7 +32,6 @@ def tester(function):
 
     collecter(function, hashes)
     for hash in sorted(hashes):
-        print(hash)
         resultats[hash[0]] += 1
 
     print("-" * 72)
