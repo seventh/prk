@@ -33,13 +33,14 @@
 # The fact that you are presently reading this means that you have had
 # knowledge of the CeCILL license and that you accept its terms.
 
-"""(PeRKy) Software requirements management with any SCM
+"""(PeRKy) Management of software requirements with any SCM
 
 When editing a document, it is best seen as a whole, in a single file. But,
-in order to verify its evolution, it is best stored split, a requirement per
-file. Finally, additional formatting or treatments may be required on final
-output. PeRKy provides developers with the minimum functionalities to go from
-one view to another, and thus edit efficiently a requirements documentation.
+in order to verify its evolution, it is best stored split, a requirement
+per file. Finally, additional formatting or treatments may be required on
+final output. PeRKy provides developers with the minimum functionalities to
+go from one view to another, and thus edit efficiently a requirements
+documentation.
 """
 
 import collections
@@ -437,14 +438,7 @@ def _transpose_matrix(matrix):
 # Other functions
 
 def parse(tokens, configuration):
-    """Unstable command-line options parser. Furthermore, this version is not
-    satisfactory as the following command is rejected:
-
-    >>> ./prk.py merge -i input.prk
-
-    to the benefit of this one:
-
-    >>> ./prk.py -i input.prk merge
+    """Command-line options parser
     """
     error_encountered = False
 
