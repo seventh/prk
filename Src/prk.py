@@ -444,7 +444,8 @@ def parse(tokens, configuration):
 
     # Parse command name
     if len(tokens) < 1:
-        logging.error("Wrong number of arguments")
+        logging.critical("A command ('merge', 'split' or 'yield') shall be " \
+                         "provided")
         error_encountered = True
     elif tokens[0] == "merge":
         configuration["command"] = merge
@@ -453,7 +454,7 @@ def parse(tokens, configuration):
     elif tokens[0] == "yield":
         configuration["command"] = yield_cmd
     else:
-        logging.error("Unknown command - first argument shall either be " \
+        logging.critical("Unknown command - first argument shall either be " \
                       + "'merge', 'split' or 'yield'")
         error_encountered = True
 
@@ -462,7 +463,11 @@ def parse(tokens, configuration):
     args = list()
     if not error_encountered:
         try:
-            opts, args = getopt.getopt(tokens[1:], "i:o:", ["sparse", "compact", "input=", "output=", "quiet", "verbose"])
+            opts, args = getopt.getopt(tokens[1:],
+                                       "i:o:",
+                                       ["input=", "output=",
+                                        "compact", "permissive", "quiet",
+                                        "sparse", "strict", "verbose"])
         except getopt.GetoptError as e:
             logging.error(e)
             error_encountered = True
@@ -473,10 +478,10 @@ def parse(tokens, configuration):
             try:
                 configuration["input"] = open(args[0], "rt")
             except OSError as e:
-                logging.error(e)
+                logging.critical(e)
                 error_encountered = True
         elif len(args) > 1:
-            logging.error("Wrong number of arguments")
+            logging.critical("Wrong number of arguments")
             error_encountered = True
 
     # Parse options
@@ -490,14 +495,14 @@ def parse(tokens, configuration):
             try:
                 configuration["input"] = open(val, "rt")
             except OSError as e:
-                logging.error(e)
+                logging.critical(e)
                 error_encountered = True
 
         elif opt in ["-o", "--output"]:
             try:
                 configuration["output"] = open(val, "wt")
             except OSError as e:
-                logging.error(e)
+                logging.critical(e)
                 error_encountered = True
 
         elif opt == "--quiet":
@@ -505,6 +510,12 @@ def parse(tokens, configuration):
 
         elif opt == "--verbose":
             configuration["log_level"] = 2
+
+        elif opt == "--strict":
+            configuration["strict"] = True
+
+        elif opt == "--permissive":
+            configuration["permissive"] = True
 
     #
     if error_encountered:
@@ -579,7 +590,9 @@ if __name__ == "__main__":
         "input": sys.stdin,
         "log_level": 1,
         "output": sys.stdout,
+        "permissive": False,
         "sparse": False,
+        "strict": False,
     }
 
     parse(sys.argv[1:], CONFIGURATION)
