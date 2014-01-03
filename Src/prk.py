@@ -66,7 +66,7 @@ TAG_TRB = "PRK-REF"
 # Configurable input/output features
 IDENTIFIER_REGEX = "^[0-9A-Za-z-]+$"
 FORMAT_HEADER = "REQ-"
-N = 3
+N = 4
 
 PUBLISH_FORMAT = """**[{req_id}]**
 
