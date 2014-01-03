@@ -96,7 +96,10 @@ def merge(configuration):
     # Load traceability matrix, if any
     linked_ids = _read_traceability(configuration)
 
+    line_num = 0
     for line in configuration["input"]:
+        line_num += 1
+
         if line.startswith(TAG_IPR):
             req_id = line[len(TAG_IPR) + 1:-1]
             used_ids.add(req_id)
@@ -120,6 +123,19 @@ def merge(configuration):
         elif line.startswith(TAG_LNK):
             pass
 
+        # Permissive transformations
+        elif line.startswith(TAG_BRB):
+            if not configuration["permissive"]:
+                logging.warning(
+                    "line {}: BRB tag should not be present in input"
+                    .format(line_num))
+            else:
+                pass
+
+        elif line.startswith(TAG_ERB):
+            pass
+
+        # Normal output
         else:
             configuration["output"].write(line)
 
@@ -373,6 +389,18 @@ def yield_cmd(configuration):
             pass
 
         elif line.startswith(TAG_LNK):
+            pass
+
+        # Permissive transformations
+        elif line.startswith(TAG_BRB):
+            if not configuration["permissive"]:
+                logging.warning(
+                    "line {}: BRB tag should not be present in input"
+                    .format(line_num))
+            else:
+                pass
+
+        elif line.startswith(TAG_ERB):
             pass
 
         # Normal output
