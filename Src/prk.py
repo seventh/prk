@@ -65,8 +65,6 @@ TAG_TRB = "PRK-REF"
 
 # Configurable input/output features
 IDENTIFIER_REGEX = "^[0-9A-Za-z-]+$"
-FORMAT_HEADER = "REQ-"
-N = 4
 
 PUBLISH_FORMAT = """**[{req_id}]**
 
@@ -74,6 +72,93 @@ PUBLISH_FORMAT = """**[{req_id}]**
 
 **-- End of requirement**
 """
+
+##############################################################################
+# Utility classes
+##############################################################################
+
+class IdFactory(object):
+    """Generator of identifiers for requirement blocks
+    """
+
+    # minimum length of the numerical part
+    _N = 4
+
+    # format string used to generate new identifiers
+    _FORMAT = "REQ-{}"
+
+    def __init__(self):
+        self._reserved_ids = set()
+
+
+    def declare(self, req_id):
+        """Add requirement identifier to the list of the already reserved ones
+        """
+        self._reserved_ids.add(req_id)
+
+
+    def generate(self, content):
+        """Generate a new requirement identifier from its content
+        """
+        result = 0
+
+        # Generate a new identifier from requirement content
+        hashed_content = self._hash_value(content)
+        result = self._extract_new_id(hashed_content)
+
+        # Declare, then return it
+        self.declare(result)
+        return result
+
+
+    def __iter__(self):
+        """Iterates over the set of already reserved ids
+        """
+        for req_id in self._reserved_ids:
+            yield req_id
+
+
+    def _hash_value(self, string):
+        """Hash string with MD5 algorithm
+        """
+        result = None
+
+        hash_as_string_b16 = hashlib.md5(string.encode("utf-8")).hexdigest()
+        hash_as_string_b10 = str(int(hash_as_string_b16, 16))
+
+        # Revert it to equilibrate distribution of values
+        result = hash_as_string_b10[::-1]
+
+        return result
+
+
+    def _extract_new_id(self, footprint):
+        """Generate shortest available requirement id from an hash value
+        """
+        # First try: only the first N characters
+        result = self._FORMAT.format(footprint[:self._N])
+
+        # Second try: extract as short prefix as possible
+        if result in self._reserved_ids:
+            footprint = footprint.strip("0")
+            for n in range(self._N, len(footprint) + 1):
+                result = self._FORMAT.format(footprint[:n])
+                if result not in self._reserved_ids:
+                    break
+            else:
+                result = None
+
+        if result is not None:
+            self.declare(result)
+        else:
+            logging.error("Cannot generate a new unique identifier")
+
+        return result
+
+
+
+FACTORY = IdFactory()
+
 
 ##############################################################################
 # 'merge' command implementation
@@ -87,9 +172,6 @@ def merge(configuration):
     - replace all LNK delimiter with a TRB delimiter in corresponding
       requirement block
     """
-    # Currently used and obsolete requirement identifiers
-    used_ids = set()
-
     # Load main input and replace it with a list of lines
     configuration["input"] = _load_file(configuration["input"])
 
@@ -102,7 +184,7 @@ def merge(configuration):
 
         if line.startswith(TAG_IPR):
             req_id = line[len(TAG_IPR) + 1:-1]
-            used_ids.add(req_id)
+            FACTORY.declare(req_id)
 
             configuration["output"].write("{} {}\n".format(TAG_BRB, req_id))
 
@@ -118,7 +200,7 @@ def merge(configuration):
 
         elif line.startswith(TAG_RRI):
             req_id = line[len(TAG_RRI) + 1:-1]
-            used_ids.add(req_id)
+            FACTORY.declare(req_id)
 
         elif line.startswith(TAG_LNK):
             pass
@@ -141,7 +223,7 @@ def merge(configuration):
 
     # Keep track of all requirements ids, in case some of them disappear
     # during editing
-    for req_id in sorted(used_ids):
+    for req_id in sorted(FACTORY):
         configuration["output"].write("{} {}\n".format(TAG_RRI, req_id))
 
 
@@ -179,7 +261,7 @@ def split(configuration):
 
     # Parse file in order to collect already used requirement identifiers,
     # even obsolete ones
-    used_ids = _collect_ids(configuration)
+    _collect_ids(configuration)
 
     # Actually split the file
     output = configuration["output"]
@@ -192,7 +274,7 @@ def split(configuration):
         content = output.read()
 
         if req_id is None:
-            req_id = _reserve_id_hash(used_ids, content)
+            req_id = FACTORY.generate(content)
         cited_ids.add(req_id)
         linked_ids[req_id] = references
 
@@ -237,7 +319,7 @@ def split(configuration):
         output_requirement()
 
     # Keep memory only of unused requirement identifiers
-    for req_id in sorted(used_ids.difference(cited_ids)):
+    for req_id in sorted(set(FACTORY).difference(cited_ids)):
         output.write("{} {}\n".format(TAG_RRI, req_id))
 
     # Keep memory of linked requirement identifiers
@@ -248,25 +330,21 @@ def split(configuration):
 
 
 def _collect_ids(configuration):
-    result = set()
-
     line_num = 0
     for line in configuration["input"]:
         line_num += 1
         if line.startswith(TAG_RRI):
             req_id = line[len(TAG_RRI) + 1:-1]
-            result.add(req_id)
+            FACTORY.declare(req_id)
 
         elif line.startswith(TAG_BRB):
             req_id = _isolate_id(line, line_num)
-            if req_id in result:
+            if req_id in FACTORY:
                 logging.error(
                     "line {}: '{}' identifier is not unique".format(
-                        line_num, result))
+                        line_num, req_id))
             elif req_id is not None:
-                result.add(req_id)
-
-    return result
+                FACTORY.declare(req_id)
 
 
 def _isolate_id(line, line_num):
@@ -278,47 +356,6 @@ def _isolate_id(line, line_num):
         logging.error("line {}: '{}' identifier is ill formed".format(
                 line_num, result))
         result = None
-
-    return result
-
-
-def _reserve_id_cont(used_ids, content):
-    max_n = -1
-    for used_id in used_ids:
-        if used_id.startswith(FORMAT_HEADER):
-            n = used_id[len(FORMAT_HEADER):]
-            if n.isdigit():
-                n = int(n)
-                max_n = max(n, max_n)
-
-    max_n += 1
-    result = FORMAT_HEADER + ("{:0>" + str(N) + "d}").format(max_n)
-    used_ids.add(result)
-
-    return result
-
-
-def _reserve_id_hash(used_ids, content):
-    hashing = hashlib.md5()
-    hashing.update(content.encode("utf-8"))
-    footprint = str(int(hashing.hexdigest(), 16))[::-1]
-
-    # First try: only the first N characters
-    result = FORMAT_HEADER + footprint[:N]
-    if result not in used_ids:
-        used_ids.add(result)
-
-    # Second try: extract as short prefix as possible
-    else:
-        footprint = footprint.strip("0")
-        for n in range(N, len(footprint) + 1):
-            result = FORMAT_HEADER + footprint[:n]
-            if result not in used_ids:
-                used_ids.add(result)
-                break
-        else:
-            logging.error("Cannot generate a new unique identifier")
-            result = None
 
     return result
 
@@ -551,6 +588,8 @@ def parse(tokens, configuration):
 
 
 def _load_file(input_file):
+    """Load file as a list of lines.
+    """
     result = None
 
     if type(input_file) == type(str):
