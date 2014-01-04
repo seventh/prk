@@ -91,7 +91,7 @@ class IdFactory(object):
         self._reserved_ids = set()
 
 
-    def declare(self, req_id):
+    def add(self, req_id):
         """Add requirement identifier to the list of the already reserved ones
         """
         self._reserved_ids.add(req_id)
@@ -107,7 +107,7 @@ class IdFactory(object):
         result = self._extract_new_id(hashed_content)
 
         # Declare, then return it
-        self.declare(result)
+        self.add(result)
         return result
 
 
@@ -149,15 +149,12 @@ class IdFactory(object):
                 result = None
 
         if result is not None:
-            self.declare(result)
+            self.add(result)
         else:
             logging.error("Cannot generate a new unique identifier")
 
         return result
 
-
-
-FACTORY = IdFactory()
 
 
 ##############################################################################
@@ -172,6 +169,9 @@ def merge(configuration):
     - replace all LNK delimiter with a TRB delimiter in corresponding
       requirement block
     """
+    # Currently used and obsolete requirement identifiers
+    used_ids = IdFactory()
+
     # Load main input and replace it with a list of lines
     configuration["input"] = _load_file(configuration["input"])
 
@@ -184,7 +184,7 @@ def merge(configuration):
 
         if line.startswith(TAG_IPR):
             req_id = line[len(TAG_IPR) + 1:-1]
-            FACTORY.declare(req_id)
+            used_ids.add(req_id)
 
             configuration["output"].write("{} {}\n".format(TAG_BRB, req_id))
 
@@ -200,7 +200,7 @@ def merge(configuration):
 
         elif line.startswith(TAG_RRI):
             req_id = line[len(TAG_RRI) + 1:-1]
-            FACTORY.declare(req_id)
+            used_ids.add(req_id)
 
         elif line.startswith(TAG_LNK):
             pass
@@ -223,7 +223,7 @@ def merge(configuration):
 
     # Keep track of all requirements ids, in case some of them disappear
     # during editing
-    for req_id in sorted(FACTORY):
+    for req_id in sorted(used_ids):
         configuration["output"].write("{} {}\n".format(TAG_RRI, req_id))
 
 
@@ -261,7 +261,7 @@ def split(configuration):
 
     # Parse file in order to collect already used requirement identifiers,
     # even obsolete ones
-    _collect_ids(configuration)
+    used_ids = _collect_ids(configuration)
 
     # Actually split the file
     output = configuration["output"]
@@ -274,7 +274,7 @@ def split(configuration):
         content = output.read()
 
         if req_id is None:
-            req_id = FACTORY.generate(content)
+            req_id = used_ids.generate(content)
         cited_ids.add(req_id)
         linked_ids[req_id] = references
 
@@ -319,7 +319,7 @@ def split(configuration):
         output_requirement()
 
     # Keep memory only of unused requirement identifiers
-    for req_id in sorted(set(FACTORY).difference(cited_ids)):
+    for req_id in sorted(set(used_ids).difference(cited_ids)):
         output.write("{} {}\n".format(TAG_RRI, req_id))
 
     # Keep memory of linked requirement identifiers
@@ -330,21 +330,25 @@ def split(configuration):
 
 
 def _collect_ids(configuration):
+    result = IdFactory()
+
     line_num = 0
     for line in configuration["input"]:
         line_num += 1
         if line.startswith(TAG_RRI):
             req_id = line[len(TAG_RRI) + 1:-1]
-            FACTORY.declare(req_id)
+            result.add(req_id)
 
         elif line.startswith(TAG_BRB):
             req_id = _isolate_id(line, line_num)
-            if req_id in FACTORY:
+            if req_id in result:
                 logging.error(
                     "line {}: '{}' identifier is not unique".format(
                         line_num, req_id))
             elif req_id is not None:
-                FACTORY.declare(req_id)
+                result.add(req_id)
+
+    return result
 
 
 def _isolate_id(line, line_num):
