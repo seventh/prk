@@ -1,0 +1,2 @@
+A transformation is successful iff_ all of its input files can be read and all
+of its output files can be written.

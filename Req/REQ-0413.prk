@@ -1,0 +1,2 @@
+Any unexpected option in static configuration file shall produce a warning
+message.

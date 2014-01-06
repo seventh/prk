@@ -1,0 +1,2 @@
+PeRKy shall accept a ``VERBOSE`` option to enlarge the scope of messages
+produced on standard error channel to informational ones.

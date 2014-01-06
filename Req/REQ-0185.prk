@@ -1,0 +1,2 @@
+PeRKy shall accept a ``STRICT`` option to ensure that any warning message on
+standard error channel provokes script failure.

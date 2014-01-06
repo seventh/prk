@@ -1,0 +1,2 @@
+All warning messages concerning static configuration file shall be produced
+before program failure.

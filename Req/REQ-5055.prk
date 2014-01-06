@@ -1,0 +1,13 @@
+PeRKy accepts the following set of command-line options:
+
+-i FILE, --input=FILE   name of the main input file
+-o FILE, --output=FILE  name of the main output file
+
+--quiet    no status message is produced on standard error
+--verbose  additional messages are produced on standard error
+
+--permissive  support optional input transformations
+--strict      any warning provokes script failure
+
+--compact  direct traceability matrix references only tracked requirements
+--sparse   direct traceability matrix references all requirements (default)

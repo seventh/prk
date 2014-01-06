@@ -1,0 +1,3 @@
+A file is created for each requirement block, using the requirement identifier
+as the name of the file. All lines that are not PeRKy delimiters are dumped
+into it.

@@ -1,0 +1,5 @@
+.. figure:: automaton.png
+   :width: 15cm
+   :align: center
+
+Finite state automaton describing allowed transformations between states.

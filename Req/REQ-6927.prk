@@ -1,0 +1,2 @@
+RRI_ delimiters which reference the same tag than any IPR_ or TRB_ one are
+removed from the output.

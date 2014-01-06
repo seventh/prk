@@ -1,0 +1,2 @@
+PeRKy shall accept a ``CLEAN`` option for ``merge`` command to remove all
+files corresponding to IPR_ delimiters.

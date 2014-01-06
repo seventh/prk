@@ -394,7 +394,9 @@ def yield_cmd(configuration):
     # Load traceability matrix, if any
     linked_ids = _read_traceability(configuration)
 
+    line_num = 0
     for line in configuration["input"]:
+        line_num += 1
         if line.startswith(TAG_IPR):
             req_id = line[len(TAG_IPR) + 1:-1]
 
