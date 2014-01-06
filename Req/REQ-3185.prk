@@ -1,0 +1,4 @@
+PeRKy is aimed at producing document structured with reStructuredText_ markup
+language.
+
+.. _reStructuredText: http://docutils.sourceforge.net/docs/ref/rst/restructuredtext.html

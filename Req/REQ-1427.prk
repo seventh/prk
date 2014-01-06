@@ -1,0 +1,9 @@
+A Requirement Block starts with a BRB_ delimiter, and ends either:
+
+* with an ERB_ delimiter,
+
+* the line preceding next BRB_ delimiter,
+
+* at the end of the document,
+
+any condition comes first.

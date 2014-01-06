@@ -1,0 +1,2 @@
+By default, PeRKy considers that the ``STRICT`` option is set, thus the
+``PERMISSIVE`` one is not.

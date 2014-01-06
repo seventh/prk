@@ -1,0 +1,8 @@
+PeRKy considers only the options given the following way, in decreasing order
+of preference:
+
+1) Command-line options
+
+2) Static configuration
+
+3) Default configuration

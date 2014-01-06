@@ -1,0 +1,2 @@
+Use of the ``--quiet`` command-line option corresponds to setting the
+``QUIET`` option.

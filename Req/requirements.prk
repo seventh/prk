@@ -1,0 +1,376 @@
+Introduction
+============
+
+PeRKy_ is a computer software dedicated to management of software requirements
+with any `Source Control Manager`_ (abbreviated *SCM*) as storage layer, based
+on a simple principle: **1 file per requirement**.
+
+.. _PeRKy: http://www.github.com/seventh/prk
+.. _`Source Control Manager`: http://en.wikipedia.org/wiki/Source_Control_Management
+
+PeRKy helps users to keep documentation in sync with their developments by
+using the same tools than the one they use for code. It also integrates
+notions of distributed development and thus highly limitates the risk of
+encountering conflicts when merging branches of development.
+
+PeRKy relies on common SCM principles and commands for users to follow the
+evolution of their software requirements, like *log*, *diff* or *tag*.
+
+Dependencies
+------------
+
+PRK-INC REQ-2411
+
+PRK-INC REQ-3185
+
+*Note:* This is really important only for output format. Management of
+document does not rely on any reST intrisics until production.
+
+Licence
+-------
+
+PRK-INC REQ-2512
+
+.. _CeCILL: http://www.cecill.info
+
+References
+----------
+
+Various tools can be used to convert reST_ formatted documents into more
+common format, including:
+
+- docutils_ themselves, which authorizes conversion to html, latex, man or odt
+  formats for example.
+
+- pandoc_, which provide the same kind of conversion, even if using different
+  templates, and offer conversion to other markup languages (markdown,
+  mediawiki) or usual document formats like doc or rtf.
+
+.. _reST: reStructuredText_
+.. _docutils: reStructuredText_
+.. _pandoc: http://johnmacfarlane.net/pandoc/
+
+rmtoo_ is a tool similar to PeRKy, although oriented towards internal
+traceability and agile developments.
+
+.. _rmtoo: http://www.flonatel.de/projekte/rmtoo/
+
+Requirements
+============
+
+A document managed with PeRKy can be in three different states:
+
+- EDITION state: in this format, the document is composed of a single and
+  complete file, with specific PeRKy markup to isolate begin and end of
+  requirements for example.
+
+- STORAGE state: in this format, the document is composed of a main file and
+  many requirement files which are referenced by the first one thanks to
+  specific PeRKy markup. Each requirement file stores a single requirement
+  description, and is named after the identifier of the requirement.
+
+- PUBLICATION state: this format is very similar to EDITION one, but all PeRKy
+  tags have been removed and some presentation treatments have been made, like
+  generation of cross-references matrix between requirements and reference
+  documents.
+
+PRK-INC REQ-8412
+
+Structure of a document
+-----------------------
+
+.. _delimiter:
+.. _delimiters:
+
+Without any loss of genericity, a document is defined as a list of lines, even
+empty ones. A line can either be a PeRKy **delimiter**, or plain text, i.e.
+content that will not be altered by the various PeRKy transformations.
+
+PRK-INC REQ-8299
+
+PRK-INC REQ-9789
+
+.. _iff:
+.. _tag:
+.. _tags:
+
+In order to avoid any ambiguity about PeRKy delimiters_, a line is considered
+a PeRKy delimiter_ **if and only if** (abbreviated *iff*) it begins with one of
+the **tags** reserved by PeRKy.
+
+PRK-INC REQ-6222
+
+Requirement block
+-----------------
+
+PRK-INC REQ-2736
+
+PRK-INC REQ-1427
+
+.. _BRB:
+
+Begin of Requirement Block delimiter
+''''''''''''''''''''''''''''''''''''
+
+PRK-INC REQ-6143
+
+PRK-INC REQ-6787
+
+PRK-INC REQ-0632
+
+.. _`requirement identifier`:
+.. _`requirement identifiers`:
+
+PRK-INC REQ-5832
+
+*Note:* This definition is very likely to change in order to suppress its
+limitation.
+
+.. _ERB:
+
+End of Requirement Block delimiter
+''''''''''''''''''''''''''''''''''
+
+PRK-INC REQ-8270
+
+Even if not mandatory, usage of ERB delimiter_ is highly recommended to
+tightly control the content of a requirement.
+
+PRK-INC REQ-7350
+
+.. _TRB:
+
+Traceability inside a requirement block
+'''''''''''''''''''''''''''''''''''''''
+
+PRK-INC REQ-4498
+
+PRK-INC REQ-3482
+
+*Note:* The fact that BRB_ and TRB_ tags only differ of a single character is
+an issue, considering that each occurence of a BRB_ delimiter starts a new
+requirement block. It is then easy to mispell a BRB_ tag and replace it
+accidentaly with a TRB_ tag, and mess the document. So, the value of the TRB_
+tag may change in a near future.
+
+PRK-INC REQ-8492
+
+Traceability tables
+'''''''''''''''''''
+
+In order to verify dependencies between documents, traceability tables, or
+matrices, are often used. A traceability table is in fact a dictionary which
+associates requirement identifiers of a document with the ones of another
+document. So, the set of requirement identifiers of the edited document can
+either compose the key set or the value set of a traceability table, depending
+on it is a **direct** traceability table or a **reversed** one.
+
+.. _DTM:
+
+Direct Traceability Matrix
+``````````````````````````
+
+PRK-INC REQ-0372
+
+PRK-INC REQ-8391
+
+.. _RTM:
+
+Reversed Traceability Matrix
+````````````````````````````
+
+PRK-INC REQ-0001
+
+PRK-INC REQ-3970
+
+Internal delimiters
+-------------------
+
+Additional delimiters may be added into the document by PeRKY itself, for
+internal use. For example, in order to avoid the accidental reuse of an
+already reserved requirement identifier, while the associated requirement has
+disappeared a long time ago.
+
+.. _RRI:
+
+Reserved requirement identifiers
+''''''''''''''''''''''''''''''''
+
+PRK-INC REQ-4967
+
+PRK-INC REQ-5706
+
+PRK-INC REQ-3065
+
+.. _LNK:
+
+Traceability link
+'''''''''''''''''
+
+PRK-INC REQ-9207
+
+PRK-INC REQ-1209
+
+PRK-INC REQ-3179
+
+.. _IPR:
+
+Inclusion point of a requirement
+''''''''''''''''''''''''''''''''
+
+PRK-INC REQ-7292
+
+PRK-INC REQ-4814
+
+PRK-INC REQ-9787
+
+Document transformations
+------------------------
+
+PRK-INC REQ-7944
+
+Split transformation
+''''''''''''''''''''
+
+When ``split`` command is run, the following treatments do occur:
+
+PRK-INC REQ-9266
+
+PRK-INC REQ-3058
+
+PRK-INC REQ-7180
+
+PRK-INC REQ-4208
+
+PRK-INC REQ-6927
+
+Merge transformation
+''''''''''''''''''''
+
+PRK-INC REQ-2865
+
+Summary
+'''''''
+
+In the following table, a *Yes* entry corresponds to a mandatory input
+transformation, a *No* entry to a forbidden one. In all other cases, behaviour
+depends on implementation.
+
++----------------------------------------------------+-------+-------+-------+
+| Transformation                                     | merge | split | yield |
++====================================================+=======+=======+=======+
+| Assign identifier to BRB/ERB block                 |       |  Yes  |No [#]_|
++----------------------------------------------------+-------+-------+-------+
+| Replace BRB/ERB block with formated requirement    |  No   |  No   |       |
++----------------------------------------------------+-------+-------+-------+
+| Replace BRB/ERB block with IPR delimiter           |  No   |  Yes  |  No   |
++----------------------------------------------------+-------+-------+-------+
+| Replace DTM delimiter with traceability matrix     |  No   |  No   |  Yes  |
++----------------------------------------------------+-------+-------+-------+
+| Add RRI delimiter for each IPR delimiter           |  Yes  |  No   |  No   |
++----------------------------------------------------+-------+-------+-------+
+| Replace IPR delimiter with BRB/ERB block           |  Yes  |  No   |  No   |
++----------------------------------------------------+-------+-------+-------+
+| Replace IPR delimiter with formated requirement    |  No   |  No   |  Yes  |
++----------------------------------------------------+-------+-------+-------+
+| Remove LNK delimiter from output                   |  No   |  No   |  Yes  |
++----------------------------------------------------+-------+-------+-------+
+| Replace LNK delimiter with TRB one                 |  Yes  |  No   |  No   |
++----------------------------------------------------+-------+-------+-------+
+| Remove BRB/ERB identifier from RRI delimiters set  |  No   |  Yes  |  No   |
++----------------------------------------------------+-------+-------+-------+
+| Remove RRI delimiter from output                   |  No   |  No   |  Yes  |
++----------------------------------------------------+-------+-------+-------+
+| Replace RTM delimiter with traceability matrix     |  No   |  No   |  Yes  |
++----------------------------------------------------+-------+-------+-------+
+| Remove TRB delimiter from output                   |  No   |  No   |  Yes  |
++----------------------------------------------------+-------+-------+-------+
+| Replace TRB delimiter with LNK one                 |  No   |  Yes  |  No   |
++----------------------------------------------------+-------+-------+-------+
+
+.. [#] Otherwise requirement identifiers are very likely to be lost
+
+Configuration
+-------------
+
+PRK-INC REQ-2841
+
+PRK-INC REQ-2522
+
+PRK-INC REQ-5955
+
+PRK-INC REQ-0419
+
+PRK-INC REQ-4985
+
+PRK-INC REQ-0185
+
+PRK-INC REQ-2222
+
+PRK-INC REQ-0812
+
+PRK-INC REQ-1501
+
+PRK-INC REQ-1676
+
+PRK-INC REQ-9100
+
+PRK-INC REQ-0387
+
+PRK-INC REQ-5602
+
+Command-line options
+''''''''''''''''''''
+
+PRK-INC REQ-2852
+
+PRK-INC REQ-7208
+
+PRK-INC REQ-9242
+
+PRK-INC REQ-7985
+
+PRK-INC REQ-1286
+
+PRK-INC REQ-2649
+
+PRK-INC REQ-9172
+
+PRK-INC REQ-5250
+
+PRK-INC REQ-0170
+
+PRK-INC REQ-7862
+
+PRK-INC REQ-5055
+
+Static configuration
+''''''''''''''''''''
+
+PRK-INC REQ-4428
+
+PRK-INC REQ-1108
+
+PRK-INC REQ-6652
+
+PRK-INC REQ-0413
+
+PRK-INC REQ-9393
+
+Default configuration
+'''''''''''''''''''''
+
+PRK-INC REQ-1221
+
+PRK-INC REQ-7813
+
+PRK-INC REQ-4568
+
+PRK-INC REQ-9103
+
+PRK-INC REQ-3423
+
+PRK-INC REQ-6022
+
+PRK-INC REQ-5968
+

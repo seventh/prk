@@ -1,0 +1,2 @@
+Use of the ``--sparse`` command-line option corresponds to setting the
+``SPARSE`` option.

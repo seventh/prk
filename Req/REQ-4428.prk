@@ -1,0 +1,8 @@
+PeRKy searches for static configuration files in the following directories,
+in decreasing order of preference:
+
+1) Current directory
+
+2) User's home directory
+
+3) Systemwide directory

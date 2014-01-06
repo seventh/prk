@@ -1,0 +1,2 @@
+A **requirement identifier** is composed of one or more characters taken in the
+following character set : [0-9A-Za-z-].

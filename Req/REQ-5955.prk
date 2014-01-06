@@ -1,0 +1,3 @@
+PeRKy shall accept a ``SPARSE`` option for ``yield`` command to produce direct
+traceability matrix which keyset is composed of all the requirements of the
+document.

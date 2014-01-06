@@ -1,0 +1,2 @@
+Use of the ``--verbose`` command-line option corresponds to setting the
+``VERBOSE`` option.
