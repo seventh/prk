@@ -27,3 +27,7 @@ This repository is organized the following way:
 - **Src** folder contains PeRKy source code.
 
 - **Test** folder contains PeRKy test suite.
+
+- **Tuto** folder gathers tutorials and how-tos.
+
+- **Wiki** folder stores copies of github wiki pages.
