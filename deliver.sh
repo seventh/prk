@@ -4,18 +4,18 @@
 
 function last_tag_minor()
 {
-    git tag -l $1"*" | sort -rV | head -n 1 | cut -c 10
+    git tag -l $1"*" | sort -rV | head -n 1 | cut -c 7
 }
 
 function get_new_tag()
 {
-    MAJOR=$( date +%Y%m%d )
+    MAJOR=$( date +%y%m%d )
 
     MINOR=$( last_tag_minor ${MAJOR} )
     MINOR=${MINOR:=-1}
     let 'MINOR=MINOR+1'
 
-    echo ${MAJOR}"."${MINOR}
+    echo ${MAJOR}${MINOR}
 }
 
 function is_index_clean()
