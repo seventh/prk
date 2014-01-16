@@ -1,3 +1,2 @@
-PeRKy shall accept a ``COMPACT`` option for ``yield`` command to produce
-direct traceability matrix which keyset is composed of only tracked
-requirements.
+PeRKy shall accept a ``COMPACT`` option for ``yield`` command to produce direct
+traceability matrix which keyset is composed of only tracked requirements.

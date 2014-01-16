@@ -1,5 +1,5 @@
-PeRKy searches for static configuration files in the following directories,
-in decreasing order of preference:
+PeRKy searches for static configuration files in the following directories, in
+decreasing order of preference:
 
 1) Current directory
 
