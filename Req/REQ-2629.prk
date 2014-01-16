@@ -1,0 +1,4 @@
+PeRKy shall accept a ``WIDTH`` option, that also accepts an optional positive
+integer value. When used, the required command shall reorganize lines to
+ensure that lines composed of at least two words are no longer than the
+specified width, while trying to fill lines as much as authorized.

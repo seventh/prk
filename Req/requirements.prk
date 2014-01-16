@@ -311,6 +311,11 @@ PRK-INC REQ-0812
 
 PRK-INC REQ-1501
 
+PRK-INC REQ-2629
+
+Nota: to be correctly implemented, this requirement shall take care of the
+reST_ formatting, because of tables, command attributes, and so on.
+
 PRK-INC REQ-1676
 
 PRK-INC REQ-9100
