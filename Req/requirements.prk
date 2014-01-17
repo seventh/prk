@@ -9,9 +9,9 @@ on a simple principle: **1 file per requirement**.
 .. _`Source Control Manager`: http://en.wikipedia.org/wiki/Source_Control_Management
 
 PeRKy helps users to keep documentation in sync with their developments by
-using the same tools than the one they use for code. It also integrates
-notions of distributed development and thus highly limitates the risk of
-encountering conflicts when merging branches of development.
+using the same tools than the one they use for code. It also integrates notions
+of distributed development and thus highly limitates the risk of encountering
+conflicts when merging branches of development.
 
 PeRKy relies on common SCM principles and commands for users to follow the
 evolution of their software requirements, like *log*, *diff* or *tag*.
@@ -23,8 +23,8 @@ PRK-INC REQ-2411
 
 PRK-INC REQ-3185
 
-*Note:* This is really important only for output format. Management of
-document does not rely on any reST intrisics until production.
+*Note:* This is really important only for output format. Management of document
+does not rely on any reST intrisics until production.
 
 Licence
 -------
@@ -36,8 +36,8 @@ PRK-INC REQ-2512
 References
 ----------
 
-Various tools can be used to convert reST_ formatted documents into more
-common format, including:
+Various tools can be used to convert reST_ formatted documents into more common
+format, including:
 
 - docutils_ themselves, which authorizes conversion to html, latex, man or odt
   formats for example.
@@ -94,8 +94,8 @@ PRK-INC REQ-9789
 .. _tag:
 .. _tags:
 
-In order to avoid any ambiguity about PeRKy delimiters_, a line is considered
-a PeRKy delimiter_ **if and only if** (abbreviated *iff*) it begins with one of
+In order to avoid any ambiguity about PeRKy delimiters_, a line is considered a
+PeRKy delimiter_ **if and only if** (abbreviated *iff*) it begins with one of
 the **tags** reserved by PeRKy.
 
 PRK-INC REQ-6222
@@ -133,8 +133,8 @@ End of Requirement Block delimiter
 
 PRK-INC REQ-8270
 
-Even if not mandatory, usage of ERB delimiter_ is highly recommended to
-tightly control the content of a requirement.
+Even if not mandatory, usage of ERB delimiter_ is highly recommended to tightly
+control the content of a requirement.
 
 PRK-INC REQ-7350
 
@@ -187,8 +187,8 @@ Internal delimiters
 -------------------
 
 Additional delimiters may be added into the document by PeRKY itself, for
-internal use. For example, in order to avoid the accidental reuse of an
-already reserved requirement identifier, while the associated requirement has
+internal use. For example, in order to avoid the accidental reuse of an already
+reserved requirement identifier, while the associated requirement has
 disappeared a long time ago.
 
 .. _RRI:
@@ -378,4 +378,3 @@ PRK-INC REQ-3423
 PRK-INC REQ-6022
 
 PRK-INC REQ-5968
-
