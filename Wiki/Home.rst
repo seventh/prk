@@ -1,6 +1,9 @@
 Welcome to the prk wiki!
 ========================
 
-First tutorial is available here_
+Tutorials
+---------
 
-.. _here: https://github.com/seventh/prk/wiki/Starting-up
+* `Starting up`_
+
+.. _`Starting up`: https://github.com/seventh/prk/wiki/Starting-up
