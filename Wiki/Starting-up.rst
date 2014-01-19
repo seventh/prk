@@ -1,6 +1,18 @@
 Starting up!
 ============
 
+Table of contents
+-----------------
+
+1) `Create a new document`_
+
+2) `Update an already existing document`_
+
+3) `Render your masterpiece`_
+
+Introduction
+------------
+
 You've just got the new idea that will help technology reach singularity_.
 It's necessarily too important to not writing all this down, for posterity.
 
@@ -140,3 +152,63 @@ Satisfying, isn't it? Store it!
 
 Now, you can ask ``git`` to tell you about updates in your requirement
 document, with ``git log -p`` or ``git diff --name-only``.
+
+Render your masterpiece
+-----------------------
+
+Nowadays, economy is mainly oriented towards shortening time to market. You
+**must** share your ideas to start the technological revolution you're
+proposing.
+
+For that, clearly non of the form of your documentation is suitable. That is
+why PeRKy offers you a third command, to produce a final version of the
+document. It is similar to rendering an image, or processing a TeX entry.
+
+In your terminal, type::
+
+  $> prk yield killer_app.prk > output.rst
+
+You should obtain someting like this::
+
+  $> cat output.rst
+  Great killer app
+  ================
+
+  This document defines my new killer app.
+
+  **[REQ-6174]**
+
+  My killer app shall be great enough to rule the world.
+
+  **-- End of requirement**
+
+  **[REQ-4086]**
+
+  KillerApp shall be able to determine one's age at any time, provided that
+  date of birth had been given.
+
+  **-- End of requirement**
+
+Fancy, isn't it? You can convert it to various formats thanks to docutils_ or
+pandoc_. For example::
+
+  $> rst2html output.rst > output.html
+
+produces an html document from your final version of the document.
+
+::
+
+  $> pandoc output.rst -o output.odt
+
+procudes an OpenOffice document from your final version of the document.
+
+::
+
+  $> pandoc output.rst -o output.tex
+  $> pdflatex output.tex
+
+converts your document into a LaTeX script, then render it in pdf format. The
+result is called *output.pdf*.
+
+.. _docutils: http://docutils.sourceforge.net/
+.. _pandoc: http://johnmacfarlane.net/pandoc/
