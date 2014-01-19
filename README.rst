@@ -5,10 +5,10 @@ on a simple principle: **1 file per requirement**.
 .. _PeRKy: http://www.github.com/seventh/prk
 .. _`Source Control Manager`: http://en.wikipedia.org/Source_Control_Management
 
-PeRKy helps users to keep documentation in sync with their developments by
-using the same tools than the one they use for code. It also integrates
-notions of distributed development and thus highly limitates the risk of
-encountering conflicts when merging branches of development.
+PeRKy helps developers to keep documentation in sync with their code by using
+the same tools for both. It also integrates notions of distributed development
+and thus highly limitates the risk of encountering conflicts when merging
+branches of development.
 
 ------------------------------------------------------------------------------
 
@@ -28,6 +28,5 @@ This repository is organized the following way:
 
 - **Test** folder contains PeRKy test suite.
 
-- **Tuto** folder gathers tutorials and how-tos.
-
-- **Wiki** folder stores copies of github wiki pages.
+- **Wiki** folder stores copies of github wiki pages, which offers tutorials
+  and how-tos.
