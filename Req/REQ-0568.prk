@@ -1,0 +1,2 @@
+PeRKy shall accept a ``RESIZE`` option for any command to reorganize each
+paragraph to be, as far as possible, ``WIDTH`` characters wide.

@@ -313,8 +313,10 @@ PRK-INC REQ-1501
 
 PRK-INC REQ-2629
 
+PRK-INC REQ-0568
+
 Nota: to be correctly implemented, this requirement shall take care of the
-reST_ formatting, because of tables, command attributes, and so on.
+reST_ formatting, because of headlines, tables, command attributes, and so on.
 
 PRK-INC REQ-1676
 
@@ -353,6 +355,10 @@ Static configuration
 ''''''''''''''''''''
 
 PRK-INC REQ-4428
+
+Nota: maybe searching in current directory is not a wise idea if no
+information is provided back to the user to understand this kind of
+side-effect. Allowing to point on a specific configuration file may be wiser.
 
 PRK-INC REQ-1108
 
