@@ -97,6 +97,40 @@ class IdFactory(object):
         self._reserved_ids.add(req_id)
 
 
+    def configure(self, pattern = "REQ-%N", width = 4):
+        """Change pattern used for next generations
+
+        requirement identifier in pattern argument is identified by "%N"
+        string. Every "%" character shall be escaped by another "%" in pattern
+        argument in order to obtain a single "%" in the generated identifier
+        """
+        if width > 0:
+            self._N = width
+
+        valid_format = False
+        escape_mark = False
+        proposed_format = ""
+        for c in pattern:
+            if escape_mark:
+                if c == "N":
+                    proposed_format += "{0:}"
+                    valid_format = True
+                else:
+                    proposed_format += c
+                escape_mark = False
+            elif c == "%":
+                escape_mark = True
+            else:
+                proposed_format += c
+
+        if not valid_format:
+            logging.error("Pattern '{}' does not contain any valid '%N' mark".format(pattern))
+        else:
+            if escape_mark:
+                logging.warning("Pattern '{}' ends with extraneous %".format(pattern))
+            self._FORMAT = proposed_format
+
+
     def generate(self, content):
         """Generate a new requirement identifier from its content
         """
