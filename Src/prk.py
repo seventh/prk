@@ -640,12 +640,11 @@ def _load_file(input_file):
     return result
 
 
-def load_configuration():
-    result = dict()
+def load_static_configuration(configuration):
     config_file = configparser.ConfigParser()
 
     # First, find adequate configuration file:
-    for location in iterate_configuration_file_locations():
+    for location in iterate_configuration_file_locations(configuration):
         if os.path.exists(location):
             config_file.read(location)
             logging.info("Loaded configuration file: '{}'".format(location))
@@ -657,14 +656,22 @@ def load_configuration():
     for section in config_file:
         if section == "merge":
             pass
+
+        elif section == "split":
+            for option in config_file.options(section):
+                if option == "format":
+                    pass
+                elif option == "width":
+                    pass
+                else:
+                    logging.warning("Unknown option '{}' in '{}' section of configuration file".format(option, section))
+
         elif section == "yield":
             for option in config_file.options(section):
                 if option == "sparse":
                     pass
                 else:
                     logging.warning("Unknown option '{}' in '{}' section of configuration file".format(option, section))
-            pass
-        elif section == "split":
             pass
 
         # Section created by configparser: should be empty
@@ -677,9 +684,13 @@ def load_configuration():
             logging.warning("Unknown section '{}' in configuration file.".format(section))
 
 
-def iterate_configuration_file_locations():
-    # Current directory
-    yield ".prkrc"
+def iterate_configuration_file_locations(configuration):
+    # Directory hosting input argument, or current directory if stdin
+    if configuration["input"] is sys.stdin:
+        yield "prkrc.ini"
+    else:
+        yield os.path.join(os.path.dirname(configuration["input"].name),
+                           "prkrc.ini")
 
     # User's home directory
     yield os.path.join(os.environ["HOME"], ".prkrc")
@@ -704,7 +715,10 @@ if __name__ == "__main__":
 
     parse(sys.argv[1:], CONFIGURATION)
 
-    # load_configuration()
+    # This configuration can only be loaded once INPUT argument is known, but
+    # its eventual effectual effects shall be applied prior to any
+    # command-line argument!
+    ###load_static_configuration(CONFIGURATION)
 
     # Execute requested transformation
     CONFIGURATION["command"](CONFIGURATION)
