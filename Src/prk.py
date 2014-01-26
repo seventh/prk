@@ -227,7 +227,8 @@ def merge(configuration):
                     configuration["output"].write("{} {}\n".format(TAG_TRB,
                                                                    other_id))
 
-            with open(req_id + ".prk", "rt") as req:
+            with open(os.path.join(configuration["input_root"],
+                                   req_id + ".prk"), "rt") as req:
                 for line_req in req:
                     configuration["output"].write(line_req)
             configuration["output"].write("{}\n".format(TAG_ERB))
@@ -312,9 +313,9 @@ def split(configuration):
         cited_ids.add(req_id)
         linked_ids[req_id] = references
 
-        output_file = open(req_id + ".prk", "wt")
-        output_file.write(content)
-        output_file.close()
+        with open(os.path.join(configuration["output_root"], req_id + ".prk"),
+                  "wt") as output_file:
+            output_file.write(content)
 
         output = configuration["output"]
         output.write("{} {}\n".format(TAG_IPR, req_id))
@@ -435,7 +436,8 @@ def yield_cmd(configuration):
             req_id = line[len(TAG_IPR) + 1:-1]
 
             content = io.StringIO()
-            with open(req_id + ".prk", "rt") as req:
+            with open(os.path.join(configuration["input_root"],
+                                   req_id + ".prk"), "rt") as req:
                 for line_req in req:
                     content.write(line_req)
 
@@ -582,6 +584,7 @@ def parse(tokens, configuration):
         if len(args) == 1:
             try:
                 configuration["input"] = open(args[0], "rt")
+                configuration["input_root"] = os.path.dirname(args[0])
             except OSError as e:
                 logging.critical(e)
                 error_encountered = True
@@ -599,6 +602,7 @@ def parse(tokens, configuration):
         elif opt in ["-i", "--input"]:
             try:
                 configuration["input"] = open(val, "rt")
+                configuration["input_root"] = os.path.dirname(val)
             except OSError as e:
                 logging.critical(e)
                 error_encountered = True
@@ -606,6 +610,7 @@ def parse(tokens, configuration):
         elif opt in ["-o", "--output"]:
             try:
                 configuration["output"] = open(val, "wt")
+                configuration["output_root"] = os.path.dirname(val)
             except OSError as e:
                 logging.critical(e)
                 error_encountered = True
@@ -706,8 +711,10 @@ if __name__ == "__main__":
     CONFIGURATION = {
         "command": usage,
         "input": sys.stdin,
+        "input_root": os.getcwd(),
         "log_level": 1,
         "output": sys.stdout,
+        "output_root": os.getcwd(),
         "permissive": False,
         "sparse": False,
         "strict": False,
