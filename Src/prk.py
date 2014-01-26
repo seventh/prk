@@ -104,8 +104,8 @@ class IdFactory(object):
         string. Every "%" character shall be escaped by another "%" in pattern
         argument in order to obtain a single "%" in the generated identifier
         """
-        if width > 0:
-            self._N = width
+        if int(width) > 0:
+            self._N = int(width)
 
         valid_format = False
         escape_mark = False

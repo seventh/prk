@@ -356,9 +356,8 @@ Static configuration
 
 PRK-INC REQ-4428
 
-Nota: maybe searching in current directory is not a wise idea if no
-information is provided back to the user to understand this kind of
-side-effect. Allowing to point on a specific configuration file may be wiser.
+Searching into main input directory instead of current directory avoids weird
+side-effects and allows configuration *at the project level*.
 
 PRK-INC REQ-1108
 

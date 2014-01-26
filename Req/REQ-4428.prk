@@ -1,7 +1,7 @@
 PeRKy searches for static configuration files in the following directories, in
-decreasing order of preference:
+order, until it founds one:
 
-1) Current directory
+1) Directory hosting the ``INPUT`` argument
 
 2) User's home directory
 
