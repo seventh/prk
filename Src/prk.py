@@ -544,9 +544,10 @@ def _transpose_matrix(matrix):
 
 # Other functions
 
-def parse(tokens, configuration):
+def load_user_configuration(tokens):
     """Command-line options parser
     """
+    result = dict()
     error_encountered = False
 
     # Parse command name
@@ -555,11 +556,11 @@ def parse(tokens, configuration):
                          "provided")
         error_encountered = True
     elif tokens[0] == "merge":
-        configuration["command"] = merge
+        result["command"] = merge
     elif tokens[0] == "split":
-        configuration["command"] = split
+        result["command"] = split
     elif tokens[0] == "yield":
-        configuration["command"] = yield_cmd
+        result["command"] = yield_cmd
     else:
         logging.critical("Unknown command - first argument shall either be " \
                       + "'merge', 'split' or 'yield'")
@@ -583,8 +584,8 @@ def parse(tokens, configuration):
     if not error_encountered:
         if len(args) == 1:
             try:
-                configuration["input"] = open(args[0], "rt")
-                configuration["input_root"] = os.path.dirname(args[0])
+                result["input"] = open(args[0], "rt")
+                result["input_root"] = os.path.dirname(args[0])
             except OSError as e:
                 logging.critical(e)
                 error_encountered = True
@@ -595,41 +596,43 @@ def parse(tokens, configuration):
     # Parse options
     for opt, val in opts:
         if opt == "--sparse":
-            configuration["sparse"] = True
+            result["sparse"] = True
         elif opt == "--compact":
-            configuration["sparse"] = False
+            result["sparse"] = False
 
         elif opt in ["-i", "--input"]:
             try:
-                configuration["input"] = open(val, "rt")
-                configuration["input_root"] = os.path.dirname(val)
+                result["input"] = open(val, "rt")
+                result["input_root"] = os.path.dirname(val)
             except OSError as e:
                 logging.critical(e)
                 error_encountered = True
 
         elif opt in ["-o", "--output"]:
             try:
-                configuration["output"] = open(val, "wt")
-                configuration["output_root"] = os.path.dirname(val)
+                result["output"] = open(val, "wt")
+                result["output_root"] = os.path.dirname(val)
             except OSError as e:
                 logging.critical(e)
                 error_encountered = True
 
         elif opt == "--quiet":
-            configuration["log_level"] = 0
+            result["log_level"] = 0
 
         elif opt == "--verbose":
-            configuration["log_level"] = 2
+            result["log_level"] = 2
 
         elif opt == "--strict":
-            configuration["strict"] = True
+            result["strict"] = True
 
         elif opt == "--permissive":
-            configuration["permissive"] = True
+            result["permissive"] = True
 
     #
     if error_encountered:
-        configuration["command"] = usage
+        result["command"] = usage
+
+    return result
 
 
 def _load_file(input_file):
@@ -645,11 +648,12 @@ def _load_file(input_file):
     return result
 
 
-def load_static_configuration(configuration):
-    config_file = configparser.ConfigParser()
+def load_static_configuration(input_root):
+    result = dict()
+    config_file = configparser.RawConfigParser()
 
     # First, find adequate configuration file:
-    for location in iterate_configuration_file_locations(configuration):
+    for location in iterate_configuration_file_locations(input_root):
         if os.path.exists(location):
             config_file.read(location)
             logging.info("Loaded configuration file: '{}'".format(location))
@@ -665,9 +669,9 @@ def load_static_configuration(configuration):
         elif section == "split":
             for option in config_file.options(section):
                 if option == "format":
-                    pass
+                    result["format"] = config_file[section][option]
                 elif option == "width":
-                    pass
+                    result["width"] = int(config_file[section][option])
                 else:
                     logging.warning("Unknown option '{}' in '{}' section of configuration file".format(option, section))
 
@@ -688,14 +692,12 @@ def load_static_configuration(configuration):
         else:
             logging.warning("Unknown section '{}' in configuration file.".format(section))
 
+    return result
 
-def iterate_configuration_file_locations(configuration):
+
+def iterate_configuration_file_locations(input_root):
     # Directory hosting input argument, or current directory if stdin
-    if configuration["input"] is sys.stdin:
-        yield "prkrc.ini"
-    else:
-        yield os.path.join(os.path.dirname(configuration["input"].name),
-                           "prkrc.ini")
+    yield os.path.join(input_root, "prkrc.ini")
 
     # User's home directory
     yield os.path.join(os.environ["HOME"], ".prkrc")
@@ -706,10 +708,12 @@ def iterate_configuration_file_locations(configuration):
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(level=logging.WARNING)
 
-    CONFIGURATION = {
+    # Default configuration
+    DEFAULT_CONFIGURATION = {
         "command": usage,
+        "format": "REQ-%N",
         "input": sys.stdin,
         "input_root": os.getcwd(),
         "log_level": 1,
@@ -718,14 +722,27 @@ if __name__ == "__main__":
         "permissive": False,
         "sparse": False,
         "strict": False,
+        "width": 4,
     }
 
-    parse(sys.argv[1:], CONFIGURATION)
+    USER_CONFIGURATION = load_user_configuration(sys.argv[1:])
 
     # This configuration can only be loaded once INPUT argument is known, but
     # its eventual effectual effects shall be applied prior to any
     # command-line argument!
-    ###load_static_configuration(CONFIGURATION)
+
+    input_root = None
+    if "input_root" in USER_CONFIGURATION:
+        input_root = USER_CONFIGURATION["input_root"]
+    else:
+        input_root = DEFAULT_CONFIGURATION["input_root"]
+
+    STATIC_CONFIGURATION = load_static_configuration(input_root)
+
+    # Calculate actual configuration
+    CONFIGURATION = dict(DEFAULT_CONFIGURATION)
+    CONFIGURATION.update(STATIC_CONFIGURATION)
+    CONFIGURATION.update(USER_CONFIGURATION)
 
     # Execute requested transformation
     CONFIGURATION["command"](CONFIGURATION)
