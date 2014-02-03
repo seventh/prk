@@ -67,7 +67,9 @@ TAG_TRB = "PRK-REF"
 # Configurable input/output features
 IDENTIFIER_REGEX = "^[0-9A-Za-z-]+$"
 
-PUBLISH_FORMAT = """**[{req_id}]**
+PUBLISH_FORMAT = """.. _{req_id}:
+
+**[{req_id}]**
 
 {req_content}
 
@@ -456,16 +458,10 @@ def yield_cmd(configuration):
 
         # Traceability matrices
         elif line.startswith(TAG_DTM):
-            _output_traceability_matrix(linked_ids,
-                                        "Requirement",
-                                        "Reference",
-                                        configuration)
+            _output_traceability_matrix(True, linked_ids, configuration)
 
         elif line.startswith(TAG_RTM):
-            _output_traceability_matrix(_transpose_matrix(linked_ids),
-                                        "Reference",
-                                        "Requirement",
-                                        configuration)
+            _output_traceability_matrix(False, linked_ids, configuration)
 
         # Table of contents
         elif line.startswith(TAG_TOC):
@@ -496,18 +492,25 @@ def yield_cmd(configuration):
             configuration["output"].write(line)
 
 
-def _output_traceability_matrix(matrix, header_key, header_value,
-                                configuration):
+def _output_traceability_matrix(is_direct, matrix, configuration):
+    if is_direct:
+        header_key, header_value = "Requirement", "Reference"
+        key_suffix, value_suffix = "_", ""
+    else:
+        header_value, header_key = "Requirement", "Reference"
+        value_suffix, key_suffix = "_", ""
+        matrix = _transpose_matrix(matrix)
+
     # Determine formatting parameters
     key_length = len(header_key)
     value_length = len(header_value)
 
     for key in matrix:
-        if len(key) > key_length:
-            key_length = len(key)
+        if len(key + key_suffix) > key_length:
+            key_length = len(key + key_suffix)
         for value in matrix[key]:
-            if len(value) > value_length:
-                value_length = len(value)
+            if len(value + value_suffix) > value_length:
+                value_length = len(value + value_suffix)
 
     horizontal_line = "+" + ("-" * (key_length + 2)) \
         + "+" + ("-" * (value_length + 2)) + "+" + "\n"
@@ -527,17 +530,17 @@ def _output_traceability_matrix(matrix, header_key, header_value,
         values = sorted(matrix[req_id])
 
         if len(values) == 0:
-            output.write(formatting.format(key = req_id, value = ""))
+            output.write(formatting.format(key = req_id + key_suffix, value = ""))
             output.write(horizontal_line)
 
         elif len(values) == 1:
-            output.write(formatting.format(key = req_id, value = values[0]))
+            output.write(formatting.format(key = req_id + key_suffix, value = values[0] + value_suffix))
             output.write(horizontal_line)
 
         else: # if len(values) > 1:
-            output.write(formatting.format(key = req_id, value = values[0]))
+            output.write(formatting.format(key = req_id + key_suffix, value = values[0] + value_suffix))
             for i in range(1, len(values)):
-                output.write(formatting.format(key = "", value = values[i]))
+                output.write(formatting.format(key = "", value = values[i] + value_suffix))
             output.write(horizontal_line)
 
 
