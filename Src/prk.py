@@ -61,6 +61,7 @@ TAG_IPR = "PRK-INC"
 TAG_LNK = "PRK-LNK"
 TAG_RRI = "PRK-MEM"
 TAG_RTM = "PRK-XTM"
+TAG_TOC = "PRK-TOC"
 TAG_TRB = "PRK-REF"
 
 # Configurable input/output features
@@ -429,6 +430,9 @@ def yield_cmd(configuration):
     # Load traceability matrix, if any
     linked_ids = _read_traceability(configuration)
 
+    # Load document structure
+    structure = _read_structure(configuration)
+
     line_num = 0
     for line in configuration["input"]:
         line_num += 1
@@ -462,6 +466,11 @@ def yield_cmd(configuration):
                                         "Reference",
                                         "Requirement",
                                         configuration)
+
+        # Table of contents
+        elif line.startswith(TAG_TOC):
+            if len(structure) > 0:
+                _output_table_of_contents(structure, configuration)
 
         # Technical informations shall be removed from final document
         elif line.startswith(TAG_RRI):
@@ -540,6 +549,38 @@ def _transpose_matrix(matrix):
             result[value].add(key)
 
     return result
+
+
+def _read_structure(configuration):
+    result = list()
+
+    for i in range(1, len(configuration["input"])):
+        prefix = configuration["input"][i][:4]
+        if len(prefix) == 4:
+            code = prefix[0]
+            if prefix.count(code) == 4 \
+               and code in "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~":
+                result.append((code, configuration["input"][i - 1].rstrip()))
+
+    return result
+
+
+def _output_table_of_contents(structure, configuration):
+    output = configuration["output"]
+
+    output.write("Table of contents\n")
+    output.write(len("Table of contents") * structure[0][0] + "\n")
+
+    codes = list()
+    for entry in structure:
+        code = entry[0]
+        if code not in codes:
+            codes.append(code)
+
+        level = codes.index(code)
+
+        output.write("\n")
+        output.write(2*level * " " + "+ `" + entry[1] + "`_\n")
 
 
 # Other functions
