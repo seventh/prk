@@ -556,6 +556,7 @@ def _transpose_matrix(matrix):
 
 def _read_structure(configuration):
     result = list()
+    codes = list()
 
     for i in range(1, len(configuration["input"])):
         prefix = configuration["input"][i][:4]
@@ -563,27 +564,24 @@ def _read_structure(configuration):
             code = prefix[0]
             if prefix.count(code) == 4 \
                and code in "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~":
-                result.append((code, configuration["input"][i - 1].rstrip()))
+                if code not in codes:
+                    codes.append(code)
+                level = codes.index(code)
+
+                result.append((level, configuration["input"][i - 1].rstrip()))
 
     return result
 
 
 def _output_table_of_contents(structure, configuration):
     output = configuration["output"]
+    entries = list()
 
-    output.write("Table of contents\n")
-    output.write(len("Table of contents") * structure[0][0] + "\n")
-
-    codes = list()
     for entry in structure:
-        code = entry[0]
-        if code not in codes:
-            codes.append(code)
+        level, title = entry
+        entries.append(2*level * " " + "+ `" + title + "`_\n")
 
-        level = codes.index(code)
-
-        output.write("\n")
-        output.write(2*level * " " + "+ `" + entry[1] + "`_\n")
+    output.write("\n".join(entries))
 
 
 # Other functions
