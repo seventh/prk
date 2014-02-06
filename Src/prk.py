@@ -220,24 +220,24 @@ def merge(configuration):
         line_num += 1
 
         if line.startswith(TAG_IPR):
-            req_id = line[len(TAG_IPR) + 1:-1]
+            req_id = line[len(TAG_IPR):].lstrip()
             used_ids.add(req_id)
 
             configuration["output"].write("{} {}\n".format(TAG_BRB, req_id))
 
             if req_id in linked_ids:
-                for other_id in sorted(linked_ids[req_id]):
+                for ref_id in sorted(linked_ids[req_id]):
                     configuration["output"].write("{} {}\n".format(TAG_TRB,
-                                                                   other_id))
+                                                                   ref_id))
 
             with open(os.path.join(configuration["input_root"],
                                    req_id + ".prk"), "rt") as req:
                 for line_req in req:
-                    configuration["output"].write(line_req)
+                    configuration["output"].write("{}\n".format(line_req.rstrip()))
             configuration["output"].write("{}\n".format(TAG_ERB))
 
         elif line.startswith(TAG_RRI):
-            req_id = line[len(TAG_RRI) + 1:-1]
+            req_id = line[len(TAG_RRI):].lstrip()
             used_ids.add(req_id)
 
         elif line.startswith(TAG_LNK):
@@ -257,7 +257,7 @@ def merge(configuration):
 
         # Normal output
         else:
-            configuration["output"].write(line)
+            configuration["output"].write("{}\n".format(line))
 
     # Keep track of all requirements ids, in case some of them disappear
     # during editing
@@ -347,11 +347,11 @@ def split(configuration):
                     "line {}: TRB tag outside of any requirement block"
                     .format(line_num))
             else:
-                other_id = line[len(TAG_TRB) + 1:-1]
-                references.add(other_id)
+                ref_id = line[len(TAG_TRB):].lstrip()
+                references.add(ref_id)
 
         elif not line.startswith(TAG_RRI):
-            output.write(line)
+            output.write("{}\n".format(line))
 
     if in_requirement_block:
         output_requirement()
@@ -374,7 +374,7 @@ def _collect_ids(configuration):
     for line in configuration["input"]:
         line_num += 1
         if line.startswith(TAG_RRI):
-            req_id = line[len(TAG_RRI) + 1:-1]
+            req_id = line[len(TAG_RRI):].lstrip()
             result.add(req_id)
 
         elif line.startswith(TAG_BRB):
@@ -390,7 +390,7 @@ def _collect_ids(configuration):
 
 
 def _isolate_id(line, line_num):
-    result = line[len(TAG_BRB):].strip()
+    result = line[len(TAG_BRB):].lstrip()
 
     if len(result) == 0:
         result = None
@@ -439,16 +439,16 @@ def yield_cmd(configuration):
     for line in configuration["input"]:
         line_num += 1
         if line.startswith(TAG_IPR):
-            req_id = line[len(TAG_IPR) + 1:-1]
+            req_id = line[len(TAG_IPR):].lstrip()
 
             content = io.StringIO()
             with open(os.path.join(configuration["input_root"],
                                    req_id + ".prk"), "rt") as req:
                 for line_req in req:
-                    content.write(line_req)
+                    content.write("{}\n".format(line_req.rstrip()))
 
             content.seek(0)
-            req_content = content.read().strip("\n")
+            req_content = content.read().strip()
             configuration["output"].write(PUBLISH_FORMAT.format(
                 req_id = req_id,
                 req_content = req_content))
@@ -489,7 +489,7 @@ def yield_cmd(configuration):
 
         # Normal output
         else:
-            configuration["output"].write(line)
+            configuration["output"].write("{}\n".format(line))
 
 
 def _output_traceability_matrix(is_direct, matrix, configuration):
@@ -680,12 +680,13 @@ def load_user_configuration(tokens):
 def _load_file(input_file):
     """Load file as a list of lines.
     """
-    result = None
+    result = list()
 
     if type(input_file) == type(str):
         input_file = open(input_file, "rt")
 
-    result = list(input_file)
+    for line in input_file:
+        result.append(line.rstrip())
 
     return result
 
