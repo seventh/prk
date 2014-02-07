@@ -50,10 +50,20 @@ pushd $BUILDROOT
 tar cjvf perky-${TAG}.tar.bz2 perky-${TAG}
 popd
 mv ${BUILDROOT}/perky-${TAG}.tar.bz2 Dist
-
+rm -Rf ${BUILDROOT}
 git add Dist/perky-${TAG}.tar.bz2
+
+BUILDROOT=$( mktemp -d )
+rsync -vaH Rpm/perky.spec ${BUILDROOT}
+sed -i -e "s,<VERSION>,${TAG},g" Rpm/perky.spec
+git add Rpm/perky.spec
+
 git commit -q -m "${COMMIT_MSG}"
 git tag ${TAG}
 
-rm -Rf ${BUILDROOT}
+rsync -vaH ${BUILDROOT}/perky.spec Rpm
+git add Rpm/perky.spec
+
+git commit -q -m "Switch back to development environment"
+
 echo "done."
