@@ -77,7 +77,7 @@ PUBLISH_FORMAT = """.. _{req_id}:
 """
 
 ##############################################################################
-# Utility classes
+# Utilities
 ##############################################################################
 
 class IdFactory(object):
@@ -193,6 +193,58 @@ class IdFactory(object):
         return result
 
 
+def preprocess(lines):
+    """First pass to analyze various points from document stored line by line:
+    - load traceability (if any) from TAG_LNK marks
+    - load used requirement identifiers from TAG_BRB and TAG_RRI marks
+    - load document structure from reST formatting
+    """
+    result = {
+        "identifiers": IdFactory(),
+        "structure": list(),
+        "traceability": collections.defaultdict(set),
+        }
+
+    codes = list()
+
+    # Three analysis at the price of one!
+    for i, line in enumerate(lines):
+        line_num = i + 1
+
+        # Identifiers
+        if line.startswith(TAG_RRI):
+            req_id = line[len(TAG_RRI):].lstrip()
+            result["identifiers"].add(req_id)
+
+        elif line.startswith(TAG_BRB):
+            req_id = _isolate_id(line, line_num)
+            if req_id in result["identifiers"]:
+                logging.error(
+                    "line {}: '{}' identifier is not unique".format(
+                        line_num, req_id))
+            elif req_id is not None:
+                result["identifiers"].add(req_id)
+
+        # Traceability
+        elif line.startswith(TAG_LNK):
+            req_ids = line[len(TAG_LNK):].split()
+            result["traceability"][req_ids[0]].add(req_ids[1])
+
+        # Structure
+        if line_num > 1:
+            prefix = line[:4]
+            if len(prefix) == 4:
+                code = prefix[0]
+                if prefix.count(code) == 4 \
+                   and code in "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~":
+                    if code not in codes:
+                        codes.append(code)
+                    level = codes.index(code)
+
+                    result["structure"].append((level, lines[i - 1]))
+
+    return result
+
 
 ##############################################################################
 # 'merge' command implementation
@@ -213,7 +265,7 @@ def merge(configuration):
     configuration["input"] = _load_file(configuration["input"])
 
     # Load traceability matrix, if any
-    linked_ids = _read_traceability(configuration)
+    linked_ids = preprocess(configuration["input"])["traceability"]
 
     line_num = 0
     for line in configuration["input"]:
@@ -265,17 +317,6 @@ def merge(configuration):
         configuration["output"].write("{} {}\n".format(TAG_RRI, req_id))
 
 
-def _read_traceability(configuration):
-    result = collections.defaultdict(set)
-
-    for line in configuration["input"]:
-        if line.startswith(TAG_LNK):
-            fields = line.split()
-            result[fields[1]].add(fields[2])
-
-    return result
-
-
 ##############################################################################
 # 'split' command implementation
 ##############################################################################
@@ -299,7 +340,7 @@ def split(configuration):
 
     # Parse file in order to collect already used requirement identifiers,
     # even obsolete ones
-    used_ids = _collect_ids(configuration)
+    used_ids = preprocess(configuration["input"])["identifiers"]
 
     # Actually split the file
     output = configuration["output"]
@@ -367,28 +408,6 @@ def split(configuration):
                                              other_id))
 
 
-def _collect_ids(configuration):
-    result = IdFactory()
-
-    line_num = 0
-    for line in configuration["input"]:
-        line_num += 1
-        if line.startswith(TAG_RRI):
-            req_id = line[len(TAG_RRI):].lstrip()
-            result.add(req_id)
-
-        elif line.startswith(TAG_BRB):
-            req_id = _isolate_id(line, line_num)
-            if req_id in result:
-                logging.error(
-                    "line {}: '{}' identifier is not unique".format(
-                        line_num, req_id))
-            elif req_id is not None:
-                result.add(req_id)
-
-    return result
-
-
 def _isolate_id(line, line_num):
     result = line[len(TAG_BRB):].lstrip()
 
@@ -429,11 +448,9 @@ def yield_cmd(configuration):
     # Load main input and replace it with a list of lines
     configuration["input"] = _load_file(configuration["input"])
 
-    # Load traceability matrix, if any
-    linked_ids = _read_traceability(configuration)
-
-    # Load document structure
-    structure = _read_structure(configuration)
+    additional_data = preprocess(configuration["input"])
+    linked_ids = additional_data["traceability"]
+    structure = additional_data["structure"]
 
     line_num = 0
     for line in configuration["input"]:
@@ -550,25 +567,6 @@ def _transpose_matrix(matrix):
     for key in matrix:
         for value in matrix[key]:
             result[value].add(key)
-
-    return result
-
-
-def _read_structure(configuration):
-    result = list()
-    codes = list()
-
-    for i in range(1, len(configuration["input"])):
-        prefix = configuration["input"][i][:4]
-        if len(prefix) == 4:
-            code = prefix[0]
-            if prefix.count(code) == 4 \
-               and code in "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~":
-                if code not in codes:
-                    codes.append(code)
-                level = codes.index(code)
-
-                result.append((level, configuration["input"][i - 1].rstrip()))
 
     return result
 
