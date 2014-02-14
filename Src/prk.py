@@ -341,6 +341,8 @@ def split(configuration):
     # Parse file in order to collect already used requirement identifiers,
     # even obsolete ones
     used_ids = preprocess(configuration["input"])["identifiers"]
+    used_ids.configure(pattern = configuration["format"],
+                       width = configuration["width"])
 
     # Actually split the file
     output = configuration["output"]
