@@ -230,6 +230,10 @@ def preprocess(lines):
             req_ids = line[len(TAG_LNK):].split()
             result["traceability"][req_ids[0]].add(req_ids[1])
 
+        elif line.startswith(TAG_IPR):
+            req_id = line[len(TAG_IPR):].split()[0]
+            result["traceability"][req_id].update(set())
+
         # Structure
         if line_num > 1:
             prefix = line[:4]
@@ -244,6 +248,44 @@ def preprocess(lines):
                     result["structure"].append((level, lines[i - 1]))
 
     return result
+
+
+##############################################################################
+# 'boost' and 'track' commands implementation
+##############################################################################
+
+def boost(configuration):
+    """Boost command outputs the list of requirement identifiers defined by
+    the input document itself
+    """
+    # Load main input and replace if with a list of lines
+    configuration["input"] = _load_file(configuration["input"])
+
+    # Load traceability matrix, if any
+    linked_ids = preprocess(configuration["input"])["traceability"]
+
+    # Output the list of defined requirements
+    for req_id in sorted(linked_ids):
+        configuration["output"].write("{}\n".format(req_id))
+
+
+def track(configuration):
+    """Boost command outputs the list of requirement identifiers defined by
+    the input document itself
+    """
+    # Load main input and replace if with a list of lines
+    configuration["input"] = _load_file(configuration["input"])
+
+    # Load traceability matrix, if any
+    linked_ids = preprocess(configuration["input"])["traceability"]
+
+    # Output the list of defined requirements
+    ref_ids = set()
+    for req_id in linked_ids:
+        ref_ids.update(linked_ids[req_id])
+
+    for ref_id in sorted(ref_ids):
+        configuration["output"].write("{}\n".format(ref_id))
 
 
 ##############################################################################
@@ -472,9 +514,6 @@ def yield_cmd(configuration):
                 req_id = req_id,
                 req_content = req_content))
 
-            if configuration["sparse"] and req_id not in linked_ids:
-                linked_ids[req_id] = set()
-
         # Traceability matrices
         elif line.startswith(TAG_DTM):
             _output_traceability_matrix(True, linked_ids, configuration)
@@ -525,11 +564,12 @@ def _output_traceability_matrix(is_direct, matrix, configuration):
     value_length = len(header_value)
 
     for key in matrix:
-        if len(key + key_suffix) > key_length:
-            key_length = len(key + key_suffix)
-        for value in matrix[key]:
-            if len(value + value_suffix) > value_length:
-                value_length = len(value + value_suffix)
+        if configuration["sparse"] or len(matrix[key]) > 0:
+            if len(key + key_suffix) > key_length:
+                key_length = len(key + key_suffix)
+            for value in matrix[key]:
+                if len(value + value_suffix) > value_length:
+                    value_length = len(value + value_suffix)
 
     horizontal_line = "+" + ("-" * (key_length + 2)) \
         + "+" + ("-" * (value_length + 2)) + "+" + "\n"
@@ -549,17 +589,22 @@ def _output_traceability_matrix(is_direct, matrix, configuration):
         values = sorted(matrix[req_id])
 
         if len(values) == 0:
-            output.write(formatting.format(key = req_id + key_suffix, value = ""))
-            output.write(horizontal_line)
+            if configuration["sparse"]:
+                output.write(formatting.format(key = req_id + key_suffix,
+                                               value = ""))
+                output.write(horizontal_line)
 
         elif len(values) == 1:
-            output.write(formatting.format(key = req_id + key_suffix, value = values[0] + value_suffix))
+            output.write(formatting.format(key = req_id + key_suffix,
+                                           value = values[0] + value_suffix))
             output.write(horizontal_line)
 
         else: # if len(values) > 1:
-            output.write(formatting.format(key = req_id + key_suffix, value = values[0] + value_suffix))
+            output.write(formatting.format(key = req_id + key_suffix,
+                                           value = values[0] + value_suffix))
             for i in range(1, len(values)):
-                output.write(formatting.format(key = "", value = values[i] + value_suffix))
+                output.write(formatting.format(key = "", value = values[i] \
+                                                   + value_suffix))
             output.write(horizontal_line)
 
 
@@ -594,18 +639,23 @@ def load_user_configuration(tokens):
 
     # Parse command name
     if len(tokens) < 1:
-        logging.critical("A command ('merge', 'split' or 'yield') shall be " \
-                         "provided")
+        logging.critical("A command (among 'boost', 'merge', 'split', " \
+                             + "'track' or 'yield') shall be provided")
         error_encountered = True
+    elif tokens[0] == "boost":
+        result["command"] = boost
     elif tokens[0] == "merge":
         result["command"] = merge
     elif tokens[0] == "split":
         result["command"] = split
+    elif tokens[0] == "track":
+        result["command"] = track
     elif tokens[0] == "yield":
         result["command"] = yield_cmd
     else:
         logging.critical("Unknown command - first argument shall either be " \
-                      + "'merge', 'split' or 'yield'")
+                             + "'boost', 'merge', 'split', 'track' or " \
+                             + "'yield'")
         error_encountered = True
 
     # Parse remaining tokens as options and arguments
