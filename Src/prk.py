@@ -842,7 +842,9 @@ def load_static_configuration(input_root):
         elif section == "yield":
             for option in config_file.options(section):
                 if option == "sparse":
-                    pass
+                    result["sparse"] = eval(config_file[section][option])
+                elif option == "compact":
+                    result["sparse"] = not eval(config_file[section][option])
                 else:
                     logging.warning("Unknown option '{}' in '{}' section of" \
                                     + " configuration file".format(option,
