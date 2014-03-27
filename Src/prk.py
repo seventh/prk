@@ -251,7 +251,7 @@ def preprocess(lines):
 
 
 ##############################################################################
-# 'boost' and 'track' commands implementation
+# 'boost', 'cross' and 'track' commands implementation
 ##############################################################################
 
 def boost(configuration):
@@ -269,9 +269,26 @@ def boost(configuration):
         configuration["output"].write("{}\n".format(req_id))
 
 
+def cross(configuration):
+    """Cross command outputs the direct traceabilty matrix, a pair of
+    requirements per line
+    """
+    # Load main input and replace if with a list of lines
+    configuration["input"] = _load_file(configuration["input"])
+
+    # Load traceability matrix, if any
+    linked_ids = preprocess(configuration["input"])["traceability"]
+
+    # Output the list of defined requirements
+    matrix = _transpose_matrix(linked_ids)
+    for ref_id in sorted(matrix):
+        for req_id in sorted(matrix[ref_id]):
+            configuration["output"].write("{} {}\n".format(ref_id, req_id))
+
+
 def track(configuration):
-    """Boost command outputs the list of requirement identifiers defined by
-    the input document itself
+    """Track command outputs the list of requirement identifiers referenced by
+    the input document
     """
     # Load main input and replace if with a list of lines
     configuration["input"] = _load_file(configuration["input"])
@@ -470,7 +487,7 @@ def _isolate_id(line, line_num):
 ##############################################################################
 
 def usage(configuration):
-    print("""Usage: {cmd} merge|split|yield [OPTIONS] [FILE]
+    print("""Usage: {cmd} boost|cross|merge|split|track|yield [OPTIONS] [FILE]
        transform input FILE on standard output
 
 $> {cmd} split FILE > FILE.out
@@ -481,6 +498,15 @@ search for each '{inp}' mark and merge it with normal output
 
 $> {cmd} yield FILE > FILE.out
 search for each '{inp}' mark, merge and format it with normal output
+
+$> {cmd} boost FILE > FILE.out
+output all requirements introduced by the document, one per line
+
+$> {cmd} cross FILE > FILE.out
+output direct traceability matrix, one per of requirements per line
+
+$> {cmd} track FILE > FILE.out
+output all requirements referenced by the document, one per line
 """.format(cmd = "prk", req = TAG_BRB, inp = TAG_IPR))
 
 
@@ -644,6 +670,8 @@ def load_user_configuration(tokens):
         error_encountered = True
     elif tokens[0] == "boost":
         result["command"] = boost
+    elif tokens[0] == "cross":
+        result["command"] = cross
     elif tokens[0] == "merge":
         result["command"] = merge
     elif tokens[0] == "split":
@@ -654,8 +682,8 @@ def load_user_configuration(tokens):
         result["command"] = yield_cmd
     else:
         logging.critical("Unknown command - first argument shall either be " \
-                             + "'boost', 'merge', 'split', 'track' or " \
-                             + "'yield'")
+                         + "'boost', 'cross', 'merge', 'split', 'track' or " \
+                         + "'yield'")
         error_encountered = True
 
     # Parse remaining tokens as options and arguments
@@ -766,14 +794,18 @@ def load_static_configuration(input_root):
                 elif option == "width":
                     result["width"] = int(config_file[section][option])
                 else:
-                    logging.warning("Unknown option '{}' in '{}' section of configuration file".format(option, section))
+                    logging.warning("Unknown option '{}' in '{}' section of" \
+                                    + " configuration file".format(option,
+                                                                   section))
 
         elif section == "yield":
             for option in config_file.options(section):
                 if option == "sparse":
                     pass
                 else:
-                    logging.warning("Unknown option '{}' in '{}' section of configuration file".format(option, section))
+                    logging.warning("Unknown option '{}' in '{}' section of" \
+                                    + " configuration file".format(option,
+                                                                   section))
             pass
 
         # Section created by configparser: should be empty
