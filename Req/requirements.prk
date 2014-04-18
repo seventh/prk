@@ -140,10 +140,13 @@ control the content of a requirement.
 
 PRK-INC REQ-7350
 
-.. _TRB:
-
 Traceability inside a requirement block
 '''''''''''''''''''''''''''''''''''''''
+
+.. _TRB:
+
+Explicit links
+``````````````
 
 PRK-INC REQ-4498
 
@@ -156,6 +159,25 @@ accidentaly with a TRB_ tag, and mess the document. So, the value of the TRB_
 tag may change in a near future.
 
 PRK-INC REQ-8492
+
+.. _DRM:
+
+Explicit lack of links
+``````````````````````
+
+When dealing with traceability, some questions emerge quickly, like "which
+requirements in the current document refine this upper one?" or "which
+requirements this requirement is supposed to refine?". This is generally
+achieved thanks to `Traceability tables`_. But when one is about to ask such
+questions, the answer "none" is rarely welcome, and is more likely to be
+considered an error than a will.
+
+Thus, one may have to identify that some requirements **intentionally** do not
+link to any other requirement. We often talk of *derived requirements*.
+
+PRK-INC SRS-7554
+
+PRK-INC SRS-1219
 
 Traceability tables
 '''''''''''''''''''
@@ -215,16 +237,24 @@ PRK-INC REQ-5706
 
 PRK-INC REQ-3065
 
-.. _LNK:
-
 Traceability link
 '''''''''''''''''
+
+.. _LNK:
 
 PRK-INC REQ-9207
 
 PRK-INC REQ-1209
 
 PRK-INC REQ-3179
+
+.. _DLN:
+
+PRK-INC SRS-8007
+
+PRK-INC SRS-0431
+
+PRK-INC SRS-2967
 
 .. _IPR:
 

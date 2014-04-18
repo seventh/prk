@@ -55,6 +55,8 @@ import sys
 
 # Tags associated to PeRKy delimiters
 TAG_BRB = "PRK-REQ"
+TAG_DLN = "PRK-DLN"
+TAG_DRM = "PRK-DER"
 TAG_DTM = "PRK-MTX"
 TAG_ERB = "-- PRK-REQ"
 TAG_IPR = "PRK-INC"
@@ -230,6 +232,10 @@ def preprocess(lines):
             req_ids = line[len(TAG_LNK):].split()
             result["traceability"][req_ids[0]].add(req_ids[1])
 
+        elif line.startswith(TAG_DLN):
+            req_id = line[len(TAG_DLN):].split()[0]
+            result["traceability"][req_id].add(None)
+
         elif line.startswith(TAG_IPR):
             req_id = line[len(TAG_IPR):].split()[0]
             result["traceability"][req_id].update(set())
@@ -282,8 +288,10 @@ def cross(configuration):
     # Output the list of defined requirements
     matrix = _transpose_matrix(linked_ids)
     for ref_id in sorted(matrix):
-        for req_id in sorted(matrix[ref_id]):
-            configuration["output"].write("{} {}\n".format(ref_id, req_id))
+        if ref_id is not None:
+            for req_id in sorted(matrix[ref_id]):
+                configuration["output"].write("{} {}\n".format(ref_id,
+                                                               req_id))
 
 
 def track(configuration):
@@ -300,6 +308,8 @@ def track(configuration):
     ref_ids = set()
     for req_id in linked_ids:
         ref_ids.update(linked_ids[req_id])
+
+    ref_ids.discard(None)
 
     for ref_id in sorted(ref_ids):
         configuration["output"].write("{}\n".format(ref_id))
@@ -337,9 +347,13 @@ def merge(configuration):
             configuration["output"].write("{} {}\n".format(TAG_BRB, req_id))
 
             if req_id in linked_ids:
-                for ref_id in sorted(linked_ids[req_id]):
-                    configuration["output"].write("{} {}\n".format(TAG_TRB,
-                                                                   ref_id))
+                ref_ids = sorted(linked_ids[req_id])
+                if None in ref_ids:
+                    configuration["output"].write("{}\n".format(TAG_DRM))
+                else:
+                    for ref_id in sorted(linked_ids[req_id]):
+                        configuration["output"].write(
+                            "{} {}\n".format(TAG_TRB, ref_id))
 
             with open(os.path.join(configuration["input_root"],
                                    req_id + ".prk"), "rt") as req:
@@ -352,6 +366,9 @@ def merge(configuration):
             used_ids.add(req_id)
 
         elif line.startswith(TAG_LNK):
+            pass
+
+        elif line.startswith(TAG_DLN):
             pass
 
         # Permissive transformations
@@ -452,6 +469,14 @@ def split(configuration):
                 ref_id = line[len(TAG_TRB):].lstrip()
                 references.add(ref_id)
 
+        elif line.startswith(TAG_DRM):
+            if not in_requirement_block:
+                logging.warning(
+                    "line {}: DRM tag outside of any requirement block"
+                    .format(line_num))
+            else:
+                references.add(None)
+
         elif not line.startswith(TAG_RRI):
             output.write("{}\n".format(line))
 
@@ -464,9 +489,13 @@ def split(configuration):
 
     # Keep memory of linked requirement identifiers
     for req_id in sorted(linked_ids):
-        for other_id in sorted(linked_ids[req_id]):
-            output.write("{} {} {}\n".format(TAG_LNK, req_id,
-                                             other_id))
+        ref_ids = sorted(linked_ids[req_id])
+        if None in ref_ids:
+            output.write("{} {}\n".format(TAG_DLN, req_id))
+        else:
+            for other_id in ref_ids:
+                output.write("{} {} {}\n".format(TAG_LNK, req_id,
+                                                 other_id))
 
 
 def _isolate_id(line, line_num):
@@ -559,6 +588,9 @@ def yield_cmd(configuration):
         elif line.startswith(TAG_LNK):
             pass
 
+        elif line.startswith(TAG_DLN):
+            pass
+
         # Permissive transformations
         elif line.startswith(TAG_BRB):
             if not configuration["permissive"]:
@@ -577,6 +609,8 @@ def yield_cmd(configuration):
 
 
 def _output_traceability_matrix(is_direct, matrix, configuration):
+    derived_txt = "Derived requirement"
+
     if is_direct:
         header_key, header_value = "Requirement", "Reference"
         key_suffix, value_suffix = "_", ""
@@ -594,6 +628,8 @@ def _output_traceability_matrix(is_direct, matrix, configuration):
             if len(key + key_suffix) > key_length:
                 key_length = len(key + key_suffix)
             for value in matrix[key]:
+                if value is None:
+                    value = derived_txt
                 if len(value + value_suffix) > value_length:
                     value_length = len(value + value_suffix)
 
@@ -621,8 +657,13 @@ def _output_traceability_matrix(is_direct, matrix, configuration):
                 output.write(horizontal_line)
 
         elif len(values) == 1:
+            if values[0] is None:
+                txt = derived_txt
+            else:
+                txt = values[0]
+
             output.write(formatting.format(key = req_id + key_suffix,
-                                           value = values[0] + value_suffix))
+                                           value = txt + value_suffix))
             output.write(horizontal_line)
 
         else: # if len(values) > 1:
