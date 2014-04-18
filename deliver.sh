@@ -25,7 +25,7 @@ function is_index_clean()
 
 function is_master_branch()
 {
-     test "master" = "$( git symbolic-ref -q HEAD | sed -e 's,.*/,,' )"
+     test "master" = "$( git symbolic-ref --short HEAD )"
 }
 
 function fail()
@@ -48,6 +48,7 @@ read -p "Do you really want to create a new version (${TAG})? [y/N] " -n 1
 COMMIT_MSG="RELEASE ${TAG}"
 
 echo "Releasing version ${TAG} ... "
+git checkout -b ref/${TAG}
 
 BUILDROOT=$( mktemp -d )
 rsync -vaH Src ${BUILDROOT}/perky-${TAG} --exclude=prk --exclude=__pycache__
@@ -59,9 +60,8 @@ rm -Rf ${BUILDROOT}
 git add Dist/perky-${TAG}.tar.bz2
 
 sed -i -e "s,^\(version: *\)[^ ]*$,\1${TAG}," Rpm/perky.spec
-git add Rpm/perky.spec
-
 git commit -q -m "${COMMIT_MSG}"
 git tag ${TAG}
+git checkout Rpm/perky.spec
 
 echo "done."

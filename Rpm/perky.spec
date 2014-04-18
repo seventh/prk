@@ -2,7 +2,7 @@ summary:       Management of software requirements with any SCM
 summary(fr):   Gestionnaire d'exigences logicielles avec n'importe quel GCL
 name:          perky
 epoch:         1
-version:       1404190
+version:       <VERSION>
 release:       0%{?dist}
 group:         Development/Tools
 license:       CeCILL
