@@ -23,6 +23,11 @@ function is_index_clean()
     test -z "$( git status -s )"
 }
 
+function is_master_branch()
+{
+     test "master" = "$( git symbolic-ref -q HEAD | sed -e 's,.*/,,' )"
+}
+
 function fail()
 {
     echo "Aborting delivery: $1"
@@ -34,6 +39,7 @@ function fail()
 TAG=$( get_new_tag )
 
 is_index_clean || fail "repository shall be clean before delivery"
+is_master_branch || fail "deliver can be made from master branch only"
 
 read -p "Do you really want to create a new version (${TAG})? [y/N] " -n 1
 [ ${#REPLY} -ne 0 ] && echo ""
@@ -44,7 +50,6 @@ COMMIT_MSG="RELEASE ${TAG}"
 echo "Releasing version ${TAG} ... "
 
 BUILDROOT=$( mktemp -d )
-mkdir -p ${BUILDROOT}/perky-${TAG}/Src
 rsync -vaH Src ${BUILDROOT}/perky-${TAG} --exclude=prk --exclude=__pycache__
 pushd $BUILDROOT
 tar cjvf perky-${TAG}.tar.bz2 perky-${TAG}
@@ -53,17 +58,10 @@ mv ${BUILDROOT}/perky-${TAG}.tar.bz2 Dist
 rm -Rf ${BUILDROOT}
 git add Dist/perky-${TAG}.tar.bz2
 
-BUILDROOT=$( mktemp -d )
-rsync -vaH Rpm/perky.spec ${BUILDROOT}
-sed -i -e "s,<VERSION>,${TAG},g" Rpm/perky.spec
+sed -i -e "s,^\(version: *\)[^ ]*$,\1${TAG}," Rpm/perky.spec
 git add Rpm/perky.spec
 
 git commit -q -m "${COMMIT_MSG}"
 git tag ${TAG}
-
-rsync -vaH ${BUILDROOT}/perky.spec Rpm
-git add Rpm/perky.spec
-
-git commit -q -m "Switch back to development environment"
 
 echo "done."
