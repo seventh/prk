@@ -680,7 +680,8 @@ def _transpose_matrix(matrix):
 
     for key in matrix:
         for value in matrix[key]:
-            result[value].add(key)
+            if value is not None:
+                result[value].add(key)
 
     return result
 
