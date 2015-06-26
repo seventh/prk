@@ -174,18 +174,14 @@ class IdFactory(object):
     def _extract_new_id(self, footprint):
         """Generate shortest available requirement id from an hash value
         """
-        # First try: only the first N characters
-        result = self._FORMAT.format(footprint[:self._N])
+        result = None
 
-        # Second try: extract as short prefix as possible
-        if result in self._reserved_ids:
-            footprint = footprint.strip("0")
-            for n in range(self._N, len(footprint) + 1):
-                result = self._FORMAT.format(footprint[:n])
-                if result not in self._reserved_ids:
-                    break
-            else:
-                result = None
+        for extract in self._iter_footprint(footprint):
+            result = self._FORMAT.format(extract)
+            if result not in self._reserved_ids:
+                break
+        else:
+            result = None
 
         if result is not None:
             self.add(result)
@@ -193,6 +189,21 @@ class IdFactory(object):
             logging.error("Cannot generate a new unique identifier")
 
         return result
+
+
+    def _iter_footprint(self, footprint):
+        # First try: search for an identifier of exactly N characters. In this
+        # case, it can start by any number of '0' characters
+        for offset in range(len(footprint) - self._N + 1):
+            yield footprint[offset:offset + self._N]
+
+        # Second try: search for shortest identifier possible. In this case,
+        # it cannot start by a '0' character
+        for length in range(self._N + 1, len(footprint) + 1):
+            for offset in range(len(footprint) - length + 1):
+                if footprint[offset] != '0':
+                    yield footprint[offset:offset + length]
+
 
 
 def preprocess(lines):
