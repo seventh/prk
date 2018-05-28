@@ -17,6 +17,5 @@ class TestIdFactory(unittest.TestCase):
         self.assertTrue("Güt!")
 
 
-
 if __name__ == "__main__":
     unittest.main()

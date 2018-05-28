@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Copyright or © or Copr. Guillaume Lemaître (2014)
+# Copyright or © or Copr. Guillaume Lemaître (2014, 2018)
 #
 # guillaume.lemaitre@gmail.com
 #
@@ -32,10 +32,10 @@
 # The fact that you are presently reading this means that you have had
 # knowledge of the CeCILL license and that you accept its terms.
 
-import re
 import sys
 
-MAX_WIDTH=78
+MAX_WIDTH = 78
+
 
 def redistribute(filename):
     # Read file

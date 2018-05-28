@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Copyright or © or Copr. Guillaume Lemaître (2013)
+# Copyright or © or Copr. Guillaume Lemaître (2013, 2014, 2018)
 #
 # guillaume.lemaitre@gmail.com
 #
@@ -82,6 +82,7 @@ PUBLISH_FORMAT = """.. _{req_id}:
 # Utilities
 ##############################################################################
 
+
 class IdFactory(object):
     """Generator of identifiers for requirement blocks
     """
@@ -95,14 +96,12 @@ class IdFactory(object):
     def __init__(self):
         self._reserved_ids = set()
 
-
     def add(self, req_id):
         """Add requirement identifier to the list of the already reserved ones
         """
         self._reserved_ids.add(req_id)
 
-
-    def configure(self, pattern = "REQ-%N", width = 4):
+    def configure(self, pattern="REQ-%N", width=4):
         """Change pattern used for next generations
 
         requirement identifier in pattern argument is identified by "%N"
@@ -129,12 +128,13 @@ class IdFactory(object):
                 proposed_format += c
 
         if not valid_format:
-            logging.error("Pattern '{}' does not contain any valid '%N' mark".format(pattern))
+            logging.error(
+                "Pattern '{}' does not contain any valid '%N' mark".format(pattern))
         else:
             if escape_mark:
-                logging.warning("Pattern '{}' ends with extraneous %".format(pattern))
+                logging.warning(
+                    "Pattern '{}' ends with extraneous %".format(pattern))
             self._FORMAT = proposed_format
-
 
     def generate(self, content):
         """Generate a new requirement identifier from its content
@@ -149,13 +149,11 @@ class IdFactory(object):
         self.add(result)
         return result
 
-
     def __iter__(self):
         """Iterates over the set of already reserved ids
         """
         for req_id in self._reserved_ids:
             yield req_id
-
 
     def _hash_value(self, string):
         """Hash string with MD5 algorithm
@@ -169,7 +167,6 @@ class IdFactory(object):
         result = hash_as_string_b10[::-1]
 
         return result
-
 
     def _extract_new_id(self, footprint):
         """Generate shortest available requirement id from an hash value
@@ -190,7 +187,6 @@ class IdFactory(object):
 
         return result
 
-
     def _iter_footprint(self, footprint):
         # First try: search for an identifier of exactly N characters. In this
         # case, it can start by any number of '0' characters
@@ -205,7 +201,6 @@ class IdFactory(object):
                     yield footprint[offset:offset + length]
 
 
-
 def preprocess(lines):
     """First pass to analyze various points from document stored line by line:
     - load traceability (if any) from TAG_LNK marks
@@ -216,7 +211,7 @@ def preprocess(lines):
         "identifiers": IdFactory(),
         "structure": list(),
         "traceability": collections.defaultdict(set),
-        }
+    }
 
     codes = list()
 
@@ -369,7 +364,8 @@ def merge(configuration):
             with open(os.path.join(configuration["input_root"],
                                    req_id + ".prk"), "rt") as req:
                 for line_req in req:
-                    configuration["output"].write("{}\n".format(line_req.rstrip()))
+                    configuration["output"].write(
+                        "{}\n".format(line_req.rstrip()))
             configuration["output"].write("{}\n".format(TAG_ERB))
 
         elif line.startswith(TAG_RRI):
@@ -428,8 +424,8 @@ def split(configuration):
     # Parse file in order to collect already used requirement identifiers,
     # even obsolete ones
     used_ids = preprocess(configuration["input"])["identifiers"]
-    used_ids.configure(pattern = configuration["format"],
-                       width = configuration["width"])
+    used_ids.configure(pattern=configuration["format"],
+                       width=configuration["width"])
 
     # Actually split the file
     output = configuration["output"]
@@ -516,7 +512,7 @@ def _isolate_id(line, line_num):
         result = None
     elif not re.match(IDENTIFIER_REGEX, result):
         logging.error("line {}: '{}' identifier is ill formed".format(
-                line_num, result))
+            line_num, result))
         result = None
 
     return result
@@ -547,7 +543,7 @@ output direct traceability matrix, one per of requirements per line
 
 $> {cmd} track FILE > FILE.out
 output all requirements referenced by the document, one per line
-""".format(cmd = "prk", req = TAG_BRB, inp = TAG_IPR))
+""".format(cmd="prk", req=TAG_BRB, inp=TAG_IPR))
 
 
 ##############################################################################
@@ -577,8 +573,8 @@ def yield_cmd(configuration):
             content.seek(0)
             req_content = content.read().strip()
             configuration["output"].write(PUBLISH_FORMAT.format(
-                req_id = req_id,
-                req_content = req_content))
+                req_id=req_id,
+                req_content=req_content))
 
         # Traceability matrices
         elif line.startswith(TAG_DTM):
@@ -646,16 +642,16 @@ def _output_traceability_matrix(is_direct, matrix, configuration):
 
     horizontal_line = "+" + ("-" * (key_length + 2)) \
         + "+" + ("-" * (value_length + 2)) + "+" + "\n"
-    formatting = ("| {{key: <{klen}}} " \
-                      + "| {{value: <{vlen}}} " \
-                      + "|\n").format(klen = key_length,
-                                      vlen = value_length)
+    formatting = ("| {{key: <{klen}}} "
+                  + "| {{value: <{vlen}}} "
+                  + "|\n").format(klen=key_length,
+                                  vlen=value_length)
 
     # Header
     output = configuration["output"]
 
     output.write(horizontal_line)
-    output.write(formatting.format(key = header_key, value = header_value))
+    output.write(formatting.format(key=header_key, value=header_value))
     output.write(horizontal_line)
 
     for req_id in sorted(matrix):
@@ -663,8 +659,8 @@ def _output_traceability_matrix(is_direct, matrix, configuration):
 
         if len(values) == 0:
             if configuration["sparse"]:
-                output.write(formatting.format(key = req_id + key_suffix,
-                                               value = ""))
+                output.write(formatting.format(key=req_id + key_suffix,
+                                               value=""))
                 output.write(horizontal_line)
 
         elif len(values) == 1:
@@ -673,16 +669,16 @@ def _output_traceability_matrix(is_direct, matrix, configuration):
             else:
                 txt = values[0]
 
-            output.write(formatting.format(key = req_id + key_suffix,
-                                           value = txt + value_suffix))
+            output.write(formatting.format(key=req_id + key_suffix,
+                                           value=txt + value_suffix))
             output.write(horizontal_line)
 
-        else: # if len(values) > 1:
-            output.write(formatting.format(key = req_id + key_suffix,
-                                           value = values[0] + value_suffix))
+        else:  # if len(values) > 1:
+            output.write(formatting.format(key=req_id + key_suffix,
+                                           value=values[0] + value_suffix))
             for i in range(1, len(values)):
-                output.write(formatting.format(key = "", value = values[i] \
-                                                   + value_suffix))
+                output.write(formatting.format(key="", value=values[i]
+                                               + value_suffix))
             output.write(horizontal_line)
 
 
@@ -703,7 +699,7 @@ def _output_table_of_contents(structure, configuration):
 
     for entry in structure:
         level, title = entry
-        entries.append(2*level * " " + "+ `" + title + "`_\n")
+        entries.append(2 * level * " " + "+ `" + title + "`_\n")
 
     output.write("\n".join(entries))
 
@@ -718,8 +714,8 @@ def load_user_configuration(tokens):
 
     # Parse command name
     if len(tokens) < 1:
-        logging.critical("A command (among 'boost', 'merge', 'split', " \
-                             + "'track' or 'yield') shall be provided")
+        logging.critical("A command (among 'boost', 'merge', 'split', "
+                         + "'track' or 'yield') shall be provided")
         error_encountered = True
     elif tokens[0] == "boost":
         result["command"] = boost
@@ -734,8 +730,8 @@ def load_user_configuration(tokens):
     elif tokens[0] == "yield":
         result["command"] = yield_cmd
     else:
-        logging.critical("Unknown command - first argument shall either be " \
-                         + "'boost', 'cross', 'merge', 'split', 'track' or " \
+        logging.critical("Unknown command - first argument shall either be "
+                         + "'boost', 'cross', 'merge', 'split', 'track' or "
                          + "'yield'")
         error_encountered = True
 
@@ -847,7 +843,7 @@ def load_static_configuration(input_root):
                 elif option == "width":
                     result["width"] = int(config_file[section][option])
                 else:
-                    logging.warning("Unknown option '{}' in '{}' section of" \
+                    logging.warning("Unknown option '{}' in '{}' section of"
                                     + " configuration file".format(option,
                                                                    section))
 
@@ -858,7 +854,7 @@ def load_static_configuration(input_root):
                 elif option == "compact":
                     result["sparse"] = not eval(config_file[section][option])
                 else:
-                    logging.warning("Unknown option '{}' in '{}' section of" \
+                    logging.warning("Unknown option '{}' in '{}' section of"
                                     + " configuration file".format(option,
                                                                    section))
             pass
@@ -866,11 +862,13 @@ def load_static_configuration(input_root):
         # Section created by configparser: should be empty
         elif section == "DEFAULT":
             if len(config_file.defaults()) != 0:
-                logging.warning("No default option is authorized in configuration file.")
+                logging.warning(
+                    "No default option is authorized in configuration file.")
 
         # Other sections created by user himself
         else:
-            logging.warning("Unknown section '{}' in configuration file.".format(section))
+            logging.warning(
+                "Unknown section '{}' in configuration file.".format(section))
 
     return result
 
@@ -884,7 +882,6 @@ def iterate_configuration_file_locations(input_root):
 
     # Systemwide configuration directory
     yield "/etc/prkrc"
-
 
 
 if __name__ == "__main__":

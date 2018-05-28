@@ -2,6 +2,7 @@
 
 K = 16
 
+
 def ma_hash(i, hashes):
     footprint = str(i)[::-1].lstrip("0")
 
