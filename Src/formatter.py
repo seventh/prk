@@ -76,7 +76,7 @@ def redistribute(filename):
                         if paragraph[i] == " ":
                             break
                     else:
-                        for i in range(MAX_WIDTH, len(paragraph) + 1):
+                        for i in range(MAX_WIDTH + 2, len(paragraph)):
                             if paragraph[i] == " ":
                                 break
                 flow.write(paragraph[:i] + "\n")
