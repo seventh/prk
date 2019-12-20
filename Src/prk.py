@@ -318,7 +318,7 @@ class Requirement(dict):
 
         with open(os.path.join(configuration["output_root"], self.id + ".prk"),
                   "wt") as output_file:
-            output_file.write(self["text"])
+            output_file.write(self.as_inline_text() + "\n")
 
     def as_directory(self, configuration, used_ids):
         if self.id is None:
@@ -532,7 +532,10 @@ def split(configuration):
 
     def output_requirement(requirement, configuration, used_ids, cited_ids,
                            linked_ids):
-        requirement.as_directory(configuration, used_ids)
+        if configuration["storage"] == 0:
+            requirement.as_plain_text(configuration, used_ids)
+        else:
+            requirement.as_directory(configuration, used_ids)
         cited_ids.add(requirement.id)
         linked_ids[requirement.id] = references
 
@@ -996,6 +999,8 @@ def load_static_configuration(input_root):
             for option in config_file.options(section):
                 if option == "format":
                     result["format"] = config_file[section][option]
+                elif option == "storage":
+                    result["storage"] = int(config_file[section][option])
                 elif option == "width":
                     result["width"] = int(config_file[section][option])
                 else:
@@ -1054,6 +1059,7 @@ if __name__ == "__main__":
         "output_root": os.getcwd(),
         "permissive": False,
         "sparse": False,
+        "storage": 1,
         "strict": False,
         "width": 4,
     }
