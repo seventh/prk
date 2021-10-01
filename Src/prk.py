@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 
-# Copyright or © or Copr. Guillaume Lemaître (2013, 2014, 2018)
+# Copyright or © or Copr. Guillaume Lemaître (2013, 2014, 2018, 2019, 2021)
 #
 # guillaume.lemaitre@gmail.com
 #
@@ -32,12 +33,11 @@
 #
 # The fact that you are presently reading this means that you have had
 # knowledge of the CeCILL license and that you accept its terms.
-
 """(PeRKy) Management of software requirements with any SCM
 
 When editing a document, it is best seen as a whole, in a single file. But,
 in order to verify its evolution, it is best stored split, a requirement
-per file. Finally, additional formatting or treatments may be required on
+per directory. Finally, additional formatting or treatments may be required on
 final output. PeRKy provides developers with the minimum functionalities to
 go from one view to another, and thus edit efficiently a requirements
 documentation.
@@ -47,7 +47,6 @@ import collections
 import configparser
 import getopt
 import hashlib
-import io
 import logging
 import os
 import re
@@ -55,11 +54,14 @@ import sys
 
 # Tags associated to PeRKy delimiters
 TAG_BRB = "PRK-REQ"
+TAG_BTB = "PRK-TAG"
 TAG_DLN = "PRK-DLN"
 TAG_DRM = "PRK-DER"
 TAG_DTM = "PRK-MTX"
 TAG_ERB = "-- PRK-REQ"
+TAG_ETB = "-- PRK-TAG"
 TAG_IPR = "PRK-INC"
+TAG_IRR = "PRK-FWD"
 TAG_LNK = "PRK-LNK"
 TAG_RRI = "PRK-MEM"
 TAG_RTM = "PRK-XTM"
@@ -129,11 +131,10 @@ class IdFactory(object):
 
         if not valid_format:
             logging.error(
-                "Pattern '{}' does not contain any valid '%N' mark".format(pattern))
+                f"Pattern '{pattern}' does not contain any valid '%N' mark")
         else:
             if escape_mark:
-                logging.warning(
-                    "Pattern '{}' ends with extraneous %".format(pattern))
+                logging.warning(f"Pattern '{pattern}' ends with extraneous %")
             self._FORMAT = proposed_format
 
     def generate(self, content):
@@ -203,7 +204,7 @@ class IdFactory(object):
 
 def preprocess(lines):
     """First pass to analyze various points from document stored line by line:
-    - load traceability (if any) from TAG_LNK marks
+    - load traceability (if any) from TAG_LNK and TAG_IRR marks
     - load used requirement identifiers from TAG_BRB and TAG_RRI marks
     - load document structure from reST formatting
     """
@@ -228,8 +229,7 @@ def preprocess(lines):
             req_id = _isolate_id(line, line_num)
             if req_id in result["identifiers"]:
                 logging.error(
-                    "line {}: '{}' identifier is not unique".format(
-                        line_num, req_id))
+                    f"line {line_num}: '{req_id}' identifier is not unique")
             elif req_id is not None:
                 result["identifiers"].add(req_id)
 
@@ -245,6 +245,10 @@ def preprocess(lines):
         elif line.startswith(TAG_IPR):
             req_id = line[len(TAG_IPR):].split()[0]
             result["traceability"][req_id].update(set())
+
+        elif line.startswith(TAG_IRR):
+            req_id = line[len(TAG_IRR):].lstrip()
+            result["traceability"][None].add(req_id)
 
         # Structure
         if line_num > 1:
@@ -262,9 +266,100 @@ def preprocess(lines):
     return result
 
 
+class Requirement(dict):
+    """A requirement is like a dictionary, with a required entry called "text"
+
+    Only "text" is a reserved key. As requirement identifier is not an
+    attribute of the dictionary itself, no key is reserved in order to store it
+    """
+
+    def __init__(self):
+        self["text"] = list()
+        self._id = None
+
+    @property
+    def id(self):
+        return self._id
+
+    @id.setter
+    def id(self, value):
+        self._id = value
+
+    def get_field_as_block(self, field):
+        lines = self[field]
+
+        # Sanitation
+        for i in range(len(lines)):
+            lines[i] = lines[i].rstrip()
+        while len(lines) > 0 and len(lines[0]) == 0:
+            del lines[0]
+        while len(lines) > 0 and len(lines[-1]) == 0:
+            del lines[-1]
+
+        # Output
+        return "\n".join(lines)
+
+    def as_inline_text(self):
+        blocks = list()
+
+        blocks.append(self.get_field_as_block("text"))
+        for k in sorted(self):
+            if k != "text":
+                v = self.get_field_as_block(k)
+                if len(v) == 0:
+                    blocks.append(f"{TAG_BTB} {k}")
+                elif "\n" in v:
+                    blocks.append(f"{TAG_BTB} {k}\n{v}\n{TAG_ETB}")
+                else:
+                    blocks.append(f"{TAG_BTB} {k} {v}")
+
+        return "\n\n".join(blocks)
+
+    def as_plain_text(self, configuration, used_ids):
+        if self.id is None:
+            self.id = used_ids.generate(self.get_field_as_block("text"))
+
+        with open(os.path.join(configuration["output_root"], self.id + ".prk"),
+                  "wt") as output_file:
+            output_file.write(self.as_inline_text() + "\n")
+
+    def as_directory(self, configuration, used_ids):
+        if self.id is None:
+            self.id = used_ids.generate(self.get_field_as_block("text"))
+
+        path = os.path.join(configuration["output_root"], self.id)
+        os.makedirs(path, exist_ok=True)
+        for field in self:
+            with open(os.path.join(path, field), "wt") as output_file:
+                output_file.write(self.get_field_as_block(field))
+
+    @staticmethod
+    def from_directory_content(path):
+        result = Requirement()
+
+        root, dirs, files = next(os.walk(path))
+        for f in files:
+            with open(os.path.join(root, f), "rt") as input_file:
+                result[f] = input_file.read().split("\n")
+
+        return result
+
+    @staticmethod
+    def from_file_content(path):
+        """No parsing -- all file content is considered requirement itself
+        """
+        result = Requirement()
+
+        with open(path, "rt") as input_file:
+            result["text"] = input_file.read().split("\n")
+
+        return result
+
+
 ##############################################################################
 # 'boost', 'cross' and 'track' commands implementation
 ##############################################################################
+
 
 def boost(configuration):
     """Boost command outputs the list of requirement identifiers defined by
@@ -274,15 +369,22 @@ def boost(configuration):
     configuration["input"] = _load_file(configuration["input"])
 
     # Load traceability matrix, if any
-    linked_ids = preprocess(configuration["input"])["traceability"]
+    traceability = preprocess(configuration["input"])["traceability"]
+
+    # Retrieve list of requirement identifiers, with special handling for
+    # forward req ids
+    linked_ids = list(traceability)
+    if None in linked_ids:
+        linked_ids.remove(None)
+        linked_ids.extend(traceability[None])
 
     # Output the list of defined requirements
     for req_id in sorted(linked_ids):
-        configuration["output"].write("{}\n".format(req_id))
+        configuration["output"].write(f"{req_id}\n")
 
 
 def cross(configuration):
-    """Cross command outputs the direct traceabilty matrix, a pair of
+    """Cross command outputs the direct traceability matrix, a pair of
     requirements per line
     """
     # Load main input and replace if with a list of lines
@@ -296,8 +398,7 @@ def cross(configuration):
     for ref_id in sorted(matrix):
         if ref_id is not None:
             for req_id in sorted(matrix[ref_id]):
-                configuration["output"].write("{} {}\n".format(ref_id,
-                                                               req_id))
+                configuration["output"].write(f"{ref_id} {req_id}\n")
 
 
 def track(configuration):
@@ -318,12 +419,13 @@ def track(configuration):
     ref_ids.discard(None)
 
     for ref_id in sorted(ref_ids):
-        configuration["output"].write("{}\n".format(ref_id))
+        configuration["output"].write(f"{ref_id}\n")
 
 
 ##############################################################################
 # 'merge' command implementation
 ##############################################################################
+
 
 def merge(configuration):
     """Merge command:
@@ -350,23 +452,28 @@ def merge(configuration):
             req_id = line[len(TAG_IPR):].lstrip()
             used_ids.add(req_id)
 
-            configuration["output"].write("{} {}\n".format(TAG_BRB, req_id))
+            configuration["output"].write(f"{TAG_BRB} {req_id}\n")
 
             if req_id in linked_ids:
                 ref_ids = sorted(linked_ids[req_id])
                 if None in ref_ids:
-                    configuration["output"].write("{}\n".format(TAG_DRM))
+                    configuration["output"].write(f"{TAG_DRM}\n")
                 else:
                     for ref_id in sorted(linked_ids[req_id]):
-                        configuration["output"].write(
-                            "{} {}\n".format(TAG_TRB, ref_id))
+                        configuration["output"].write(f"{TAG_TRB} {ref_id}\n")
 
-            with open(os.path.join(configuration["input_root"],
-                                   req_id + ".prk"), "rt") as req:
-                for line_req in req:
-                    configuration["output"].write(
-                        "{}\n".format(line_req.rstrip()))
-            configuration["output"].write("{}\n".format(TAG_ERB))
+            # Give higher priority to requirement management with directory
+            # than by file
+            if os.path.isdir(req_id):
+                requirement = Requirement.from_directory_content(
+                    os.path.join(configuration["input_root"], req_id))
+            else:
+                requirement = Requirement.from_file_content(
+                    os.path.join(configuration["input_root"], req_id + ".prk"))
+            requirement.id = req_id
+
+            configuration["output"].write(f"{requirement.as_inline_text()}\n")
+            configuration["output"].write(f"{TAG_ERB}\n")
 
         elif line.startswith(TAG_RRI):
             req_id = line[len(TAG_RRI):].lstrip()
@@ -382,8 +489,7 @@ def merge(configuration):
         elif line.startswith(TAG_BRB):
             if not configuration["permissive"]:
                 logging.warning(
-                    "line {}: BRB tag should not be present in input"
-                    .format(line_num))
+                    f"line {line_num}: BRB tag should not be present in input")
             else:
                 pass
 
@@ -392,17 +498,18 @@ def merge(configuration):
 
         # Normal output
         else:
-            configuration["output"].write("{}\n".format(line))
+            configuration["output"].write(f"{line}\n")
 
     # Keep track of all requirements ids, in case some of them disappear
     # during editing
     for req_id in sorted(used_ids):
-        configuration["output"].write("{} {}\n".format(TAG_RRI, req_id))
+        configuration["output"].write(f"{TAG_RRI} {req_id}\n")
 
 
 ##############################################################################
 # 'split' command implementation
 ##############################################################################
+
 
 def split(configuration):
     """Split command:
@@ -429,80 +536,129 @@ def split(configuration):
 
     # Actually split the file
     output = configuration["output"]
-    in_requirement_block = False
 
-    def output_requirement():
-        nonlocal output, req_id, cited_ids, linked_ids, in_requirement_block
+    def output_requirement(requirement, configuration, used_ids, cited_ids,
+                           linked_ids):
+        if configuration["storage"] == 0:
+            requirement.as_plain_text(configuration, used_ids)
+        else:
+            requirement.as_directory(configuration, used_ids)
+        cited_ids.add(requirement.id)
+        linked_ids[requirement.id] = references
 
-        output.seek(0)
-        content = output.read()
+        configuration["output"].write(f"{TAG_IPR} {requirement.id}\n")
 
-        if req_id is None:
-            req_id = used_ids.generate(content)
-        cited_ids.add(req_id)
-        linked_ids[req_id] = references
-
-        with open(os.path.join(configuration["output_root"], req_id + ".prk"),
-                  "wt") as output_file:
-            output_file.write(content)
-
-        output = configuration["output"]
-        output.write("{} {}\n".format(TAG_IPR, req_id))
-
-        in_requirement_block = False
+    requirement = None
+    field = "text"
+    require_etb = 0  # 3-state variable (0: no, 1: maybe, 2: yes)
 
     line_num = 0
     for line in configuration["input"]:
         line_num += 1
 
         if line.startswith(TAG_BRB):
-            if in_requirement_block:
-                output_requirement()
+            if requirement is not None:
+                output_requirement(requirement, configuration, used_ids,
+                                   cited_ids, linked_ids)
 
-            in_requirement_block = True
-            req_id = _isolate_id(line, line_num)
+            requirement = Requirement()
+            field = "text"
+            require_etb = 0
+            requirement.id = _isolate_id(line, line_num)
             references = set()
-            output = io.StringIO()
 
         elif line.startswith(TAG_ERB):
-            output_requirement()
+            output_requirement(requirement, configuration, used_ids, cited_ids,
+                               linked_ids)
+            requirement = None
 
         elif line.startswith(TAG_TRB):
-            if not in_requirement_block:
-                logging.warning(
-                    "line {}: TRB tag outside of any requirement block"
-                    .format(line_num))
+            if requirement is None:
+                logging.warning(f"line {line_num}: TRB tag outside of any " +
+                                "requirement block")
             else:
                 ref_id = line[len(TAG_TRB):].lstrip()
                 references.add(ref_id)
+                field = "text"
+                require_etb = 0
 
         elif line.startswith(TAG_DRM):
-            if not in_requirement_block:
-                logging.warning(
-                    "line {}: DRM tag outside of any requirement block"
-                    .format(line_num))
+            if requirement is None:
+                logging.warning(f"line {line_num}: DRM tag outside of any " +
+                                "requirement block")
             else:
                 references.add(None)
+                field = "text"
+                require_etb = 0
+
+        elif line.startswith(TAG_BTB):
+            if requirement is None:
+                logging.warning(
+                    "line {line_num}: TAG tag outside of any requirement block"
+                )
+            else:
+                m = re.match(r"{}\s+(\S+)\s*(.*)".format(TAG_BTB), line)
+                if not m:
+                    logging.warning(f"line {line_num}: TAG requires an " +
+                                    "identifier right after it")
+                else:
+                    field = m.group(1)
+                    if field in requirement:
+                        logging.warning(f"line {line_num}: TAG {field!r} is " +
+                                        "present twice in requirement")
+
+                    if len(m.group(2)) == 0:
+                        require_etb = 1  # maybe
+                        requirement[field] = list()
+                    else:
+                        require_etb = 0  # not required
+                        requirement[field] = [m.group(2)]
+
+        elif line.startswith(TAG_ETB):
+            if requirement is None:
+                logging.warning(f"line {line_num}: end of TAG tag outside " +
+                                "of any requirement block")
+            else:
+                field = "text"
+                require_etb = 0
 
         elif not line.startswith(TAG_RRI):
-            output.write("{}\n".format(line))
+            if requirement is None:
+                output.write(f"{line}\n")
+            elif field == "text":
+                requirement[field].append(line)
+            else:
+                if require_etb == 2:
+                    requirement[field].append(line)
+                elif require_etb == 1:
+                    if len(line) == 0:
+                        field = "text"
+                    else:
+                        if len(requirement[field]) == 0:
+                            require_etb = 2
+                        requirement[field].append(line)
+                else:  # require_etb == 0
+                    if len(line) == 0:
+                        field = "text"
+                    else:
+                        requirement[field].append(line)
 
-    if in_requirement_block:
-        output_requirement()
+    if requirement is not None:
+        output_requirement(requirement, configuration, used_ids, cited_ids,
+                           linked_ids)
 
     # Keep memory only of unused requirement identifiers
     for req_id in sorted(set(used_ids).difference(cited_ids)):
-        output.write("{} {}\n".format(TAG_RRI, req_id))
+        output.write(f"{TAG_RRI} {req_id}\n")
 
     # Keep memory of linked requirement identifiers
     for req_id in sorted(linked_ids):
         ref_ids = sorted(linked_ids[req_id])
         if None in ref_ids:
-            output.write("{} {}\n".format(TAG_DLN, req_id))
+            output.write(f"{TAG_DLN} {req_id}\n")
         else:
             for other_id in ref_ids:
-                output.write("{} {} {}\n".format(TAG_LNK, req_id,
-                                                 other_id))
+                output.write(f"{TAG_LNK} {req_id} {other_id}\n")
 
 
 def _isolate_id(line, line_num):
@@ -511,8 +667,7 @@ def _isolate_id(line, line_num):
     if len(result) == 0:
         result = None
     elif not re.match(IDENTIFIER_REGEX, result):
-        logging.error("line {}: '{}' identifier is ill formed".format(
-            line_num, result))
+        logging.error(f"line {line_num}: '{result}' identifier is ill formed")
         result = None
 
     return result
@@ -521,6 +676,7 @@ def _isolate_id(line, line_num):
 ##############################################################################
 # 'usage' command implementation
 ##############################################################################
+
 
 def usage(configuration):
     print("""Usage: {cmd} boost|cross|merge|split|track|yield [OPTIONS] [FILE]
@@ -539,7 +695,7 @@ $> {cmd} boost FILE > FILE.out
 output all requirements introduced by the document, one per line
 
 $> {cmd} cross FILE > FILE.out
-output direct traceability matrix, one per of requirements per line
+output direct traceability matrix, one pair of requirements per line
 
 $> {cmd} track FILE > FILE.out
 output all requirements referenced by the document, one per line
@@ -549,6 +705,7 @@ output all requirements referenced by the document, one per line
 ##############################################################################
 # 'yield' command implementation
 ##############################################################################
+
 
 def yield_cmd(configuration):
     # Load main input and replace it with a list of lines
@@ -564,17 +721,19 @@ def yield_cmd(configuration):
         if line.startswith(TAG_IPR):
             req_id = line[len(TAG_IPR):].lstrip()
 
-            content = io.StringIO()
-            with open(os.path.join(configuration["input_root"],
-                                   req_id + ".prk"), "rt") as req:
-                for line_req in req:
-                    content.write("{}\n".format(line_req.rstrip()))
+            # Give higher priority to requirement management with directory
+            # than by file
+            if os.path.isdir(req_id):
+                requirement = Requirement.from_directory_content(
+                    os.path.join(configuration["input_root"], req_id))
+            else:
+                requirement = Requirement.from_file_content(
+                    os.path.join(configuration["input_root"], req_id + ".prk"))
+            requirement.id = req_id
 
-            content.seek(0)
-            req_content = content.read().strip()
-            configuration["output"].write(PUBLISH_FORMAT.format(
-                req_id=req_id,
-                req_content=req_content))
+            req_content = requirement.as_inline_text()
+            configuration["output"].write(
+                PUBLISH_FORMAT.format(req_id=req_id, req_content=req_content))
 
         # Traceability matrices
         elif line.startswith(TAG_DTM):
@@ -598,12 +757,14 @@ def yield_cmd(configuration):
         elif line.startswith(TAG_DLN):
             pass
 
+        elif line.startswith(TAG_IRR):
+            pass
+
         # Permissive transformations
         elif line.startswith(TAG_BRB):
             if not configuration["permissive"]:
                 logging.warning(
-                    "line {}: BRB tag should not be present in input"
-                    .format(line_num))
+                    f"line {line_num}: BRB tag should not be present in input")
             else:
                 pass
 
@@ -612,19 +773,23 @@ def yield_cmd(configuration):
 
         # Normal output
         else:
-            configuration["output"].write("{}\n".format(line))
+            configuration["output"].write(f"{line}\n")
 
 
-def _output_traceability_matrix(is_direct, matrix, configuration):
-    derived_txt = "Derived requirement"
+def _output_traceability_matrix(is_direct, linked_ids, configuration):
 
     if is_direct:
         header_key, header_value = "Requirement", "Reference"
         key_suffix, value_suffix = "_", ""
+        replacement_txt = "Derived requirement"
+        matrix = linked_ids.copy()
+        if None in matrix:
+            del matrix[None]
     else:
         header_value, header_key = "Requirement", "Reference"
         value_suffix, key_suffix = "_", ""
-        matrix = _transpose_matrix(matrix)
+        replacement_txt = "Unrefined requirement"
+        matrix = _transpose_matrix(linked_ids)
 
     # Determine formatting parameters
     key_length = len(header_key)
@@ -636,16 +801,14 @@ def _output_traceability_matrix(is_direct, matrix, configuration):
                 key_length = len(key + key_suffix)
             for value in matrix[key]:
                 if value is None:
-                    value = derived_txt
+                    value = replacement_txt
                 if len(value + value_suffix) > value_length:
                     value_length = len(value + value_suffix)
 
     horizontal_line = "+" + ("-" * (key_length + 2)) \
         + "+" + ("-" * (value_length + 2)) + "+" + "\n"
-    formatting = ("| {{key: <{klen}}} "
-                  + "| {{value: <{vlen}}} "
-                  + "|\n").format(klen=key_length,
-                                  vlen=value_length)
+    formatting = ("| {{key: <{klen}}} " + "| {{value: <{vlen}}} " +
+                  "|\n").format(klen=key_length, vlen=value_length)
 
     # Header
     output = configuration["output"]
@@ -659,26 +822,28 @@ def _output_traceability_matrix(is_direct, matrix, configuration):
 
         if len(values) == 0:
             if configuration["sparse"]:
-                output.write(formatting.format(key=req_id + key_suffix,
-                                               value=""))
+                output.write(
+                    formatting.format(key=req_id + key_suffix, value=""))
                 output.write(horizontal_line)
 
         elif len(values) == 1:
             if values[0] is None:
-                txt = derived_txt
+                txt = replacement_txt
             else:
                 txt = values[0]
 
-            output.write(formatting.format(key=req_id + key_suffix,
-                                           value=txt + value_suffix))
+            output.write(
+                formatting.format(key=req_id + key_suffix,
+                                  value=txt + value_suffix))
             output.write(horizontal_line)
 
         else:  # if len(values) > 1:
-            output.write(formatting.format(key=req_id + key_suffix,
-                                           value=values[0] + value_suffix))
+            output.write(
+                formatting.format(key=req_id + key_suffix,
+                                  value=values[0] + value_suffix))
             for i in range(1, len(values)):
-                output.write(formatting.format(key="", value=values[i]
-                                               + value_suffix))
+                output.write(
+                    formatting.format(key="", value=values[i] + value_suffix))
             output.write(horizontal_line)
 
 
@@ -706,6 +871,7 @@ def _output_table_of_contents(structure, configuration):
 
 # Other functions
 
+
 def load_user_configuration(tokens):
     """Command-line options parser
     """
@@ -714,8 +880,8 @@ def load_user_configuration(tokens):
 
     # Parse command name
     if len(tokens) < 1:
-        logging.critical("A command (among 'boost', 'merge', 'split', "
-                         + "'track' or 'yield') shall be provided")
+        logging.critical("A command (among 'boost', 'merge', 'split', " +
+                         "'track' or 'yield') shall be provided")
         error_encountered = True
     elif tokens[0] == "boost":
         result["command"] = boost
@@ -730,9 +896,9 @@ def load_user_configuration(tokens):
     elif tokens[0] == "yield":
         result["command"] = yield_cmd
     else:
-        logging.critical("Unknown command - first argument shall either be "
-                         + "'boost', 'cross', 'merge', 'split', 'track' or "
-                         + "'yield'")
+        logging.critical("Unknown command - first argument shall either be " +
+                         "'boost', 'cross', 'merge', 'split', 'track' or " +
+                         "'yield'")
         error_encountered = True
 
     # Parse remaining tokens as options and arguments
@@ -740,11 +906,10 @@ def load_user_configuration(tokens):
     args = list()
     if not error_encountered:
         try:
-            opts, args = getopt.getopt(tokens[1:],
-                                       "i:o:",
-                                       ["input=", "output=",
-                                        "compact", "permissive", "quiet",
-                                        "sparse", "strict", "verbose"])
+            opts, args = getopt.getopt(tokens[1:], "i:o:", [
+                "input=", "output=", "compact", "permissive", "quiet",
+                "sparse", "strict", "verbose"
+            ])
         except getopt.GetoptError as e:
             logging.error(e)
             error_encountered = True
@@ -826,7 +991,7 @@ def load_static_configuration(input_root):
     for location in iterate_configuration_file_locations(input_root):
         if os.path.exists(location):
             config_file.read(location)
-            logging.info("Loaded configuration file: '{}'".format(location))
+            logging.info(f"Loaded configuration file: '{location}'")
             break
     else:
         logging.info("No configuration file is available.")
@@ -840,12 +1005,14 @@ def load_static_configuration(input_root):
             for option in config_file.options(section):
                 if option == "format":
                     result["format"] = config_file[section][option]
+                elif option == "storage":
+                    result["storage"] = int(config_file[section][option])
                 elif option == "width":
                     result["width"] = int(config_file[section][option])
                 else:
-                    logging.warning("Unknown option '{}' in '{}' section of"
-                                    + " configuration file".format(option,
-                                                                   section))
+                    logging.warning(
+                        f"Unknown option '{option}' in '{section}' section of"
+                        + " configuration file")
 
         elif section == "yield":
             for option in config_file.options(section):
@@ -854,9 +1021,9 @@ def load_static_configuration(input_root):
                 elif option == "compact":
                     result["sparse"] = not eval(config_file[section][option])
                 else:
-                    logging.warning("Unknown option '{}' in '{}' section of"
-                                    + " configuration file".format(option,
-                                                                   section))
+                    logging.warning(
+                        f"Unknown option '{option}' in '{section}' section of"
+                        + " configuration file")
             pass
 
         # Section created by configparser: should be empty
@@ -868,7 +1035,7 @@ def load_static_configuration(input_root):
         # Other sections created by user himself
         else:
             logging.warning(
-                "Unknown section '{}' in configuration file.".format(section))
+                f"Unknown section '{section}' in configuration file.")
 
     return result
 
@@ -898,6 +1065,7 @@ if __name__ == "__main__":
         "output_root": os.getcwd(),
         "permissive": False,
         "sparse": False,
+        "storage": 1,
         "strict": False,
         "width": 4,
     }
