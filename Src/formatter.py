@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Copyright or © or Copr. Guillaume Lemaître (2014, 2018)
+# Copyright or © or Copr. Guillaume Lemaître (2014, 2018, 2022)
 #
 # guillaume.lemaitre@gmail.com
 #
@@ -32,6 +32,7 @@
 # The fact that you are presently reading this means that you have had
 # knowledge of the CeCILL license and that you accept its terms.
 
+import re
 import sys
 
 MAX_WIDTH = 78
@@ -42,7 +43,7 @@ def redistribute(filename):
     content = list()
     with open(filename, "rt") as flow:
         for raw_line in flow:
-            content.append(raw_line.strip())
+            content.append(raw_line.rstrip())
 
     # Write file
     with open(filename, "wt") as flow:
@@ -64,23 +65,50 @@ def redistribute(filename):
             # Assemble paragraph into a single string
             paragraph = " ".join(content[lower:upper + 1])
 
+            # Determine indentation
+            for padding in range(len(paragraph)):
+                if paragraph[padding] != " ":
+                    break
+            prefix = " " * padding
+
+            # Remove superfluous spaces
+            paragraph = paragraph.strip()
+            paragraph = re.sub(r"\s+", " ", paragraph)
+
             # Output paragraph
             if at_least_one_paragraph_output:
                 flow.write("\n")
 
+            first_line_has_been_output = False
             while len(paragraph) > 0:
-                if len(paragraph) <= MAX_WIDTH + 1:
+                if len(paragraph) <= MAX_WIDTH + 1 - padding:
                     i = len(paragraph) + 1
                 else:
-                    for i in range(MAX_WIDTH + 1, 0, -1):
+                    for i in range(MAX_WIDTH + 1 - padding, 0, -1):
                         if paragraph[i] == " ":
                             break
                     else:
-                        for i in range(MAX_WIDTH + 2, len(paragraph)):
+                        for i in range(MAX_WIDTH + 2 - padding,
+                                       len(paragraph)):
                             if paragraph[i] == " ":
                                 break
-                flow.write(paragraph[:i] + "\n")
+                flow.write(prefix + paragraph[:i] + "\n")
+
+                # Update indentation if necessary
+                if not first_line_has_been_output:
+                    if paragraph.startswith("- "):
+                        padding += 2
+                        prefix = " " * padding
+                    match = re.match(r"(\d+. )", paragraph)
+                    if match:
+                        padding += len(match.groups(1)[0])
+                        prefix = " " * padding
+                first_line_has_been_output = True
+
+                # Next line
                 paragraph = paragraph[i + 1:]
+
+            # Next paragraph
             at_least_one_paragraph_output = True
 
 
