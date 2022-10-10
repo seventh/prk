@@ -175,9 +175,9 @@ considered an error than a will.
 Thus, one may have to identify that some requirements **intentionally** do not
 link to any other requirement. We often talk of *derived requirements*.
 
-PRK-INC SRS-7554
+PRK-INC REQ-7554
 
-PRK-INC SRS-1219
+PRK-INC REQ-1219
 
 Traceability tables
 '''''''''''''''''''
@@ -250,11 +250,11 @@ PRK-INC REQ-3179
 
 .. _DLN:
 
-PRK-INC SRS-8007
+PRK-INC REQ-8007
 
-PRK-INC SRS-0431
+PRK-INC REQ-0431
 
-PRK-INC SRS-2967
+PRK-INC REQ-2967
 
 .. _IPR:
 
