@@ -67,7 +67,7 @@ TAG_TOC = "PRK-TOC"
 TAG_TRB = "PRK-REF"
 
 # Configurable input/output features
-IDENTIFIER_REGEX = "^[0-9A-Za-z-]+$"
+IDENTIFIER_REGEX = "^[_0-9A-Za-z-]+$"
 
 PUBLISH_FORMAT = """.. _{req_id}:
 
